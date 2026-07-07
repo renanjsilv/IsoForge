@@ -3,7 +3,10 @@
 ; Espera o exe publicado em: bin\Release\net8.0-windows\win-x64\publish\IsoForge.exe
 
 #define AppName "IsoForge"
-#define AppVersion "1.0.0"
+; AppVersion pode ser sobrescrito pela linha de comando (CI): ISCC /DAppVersion=1.2.3
+#ifndef AppVersion
+  #define AppVersion "1.1.0"
+#endif
 #define AppPublisher "IsoForge"
 #define AppExe "IsoForge.exe"
 

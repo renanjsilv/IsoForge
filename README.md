@@ -109,8 +109,8 @@ versão publicada chega ao usuário sem trabalho manual.
 
 - **Nenhuma informação sensível** (IPs, senhas, PSK, nomes de unidades) fica no código —
   o repositório é limpo e pode ser aberto.
-- Tudo que você preenche é salvo **somente na sua máquina** em
-  `%APPDATA%\IsoForge\settings.json`.
+- Tudo que você preenche é salvo **somente na sua máquina**, **cifrado com DPAPI**
+  (atado ao seu usuário/máquina) em `%APPDATA%\IsoForge\settings.dat`.
 - A ISO gerada contém as credenciais que você definiu (limitação do mecanismo da
   Microsoft) — trate a ISO como material sensível.
 
@@ -131,6 +131,18 @@ dotnet run --project SmokeTest
 # instalador (requer Inno Setup 6)
 & "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" installer\IsoForge.iss
 ```
+
+### Lançar uma nova versão (CI/CD)
+
+O build e a publicação são automáticos via GitHub Actions. Para lançar:
+
+```powershell
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+O workflow `Release` compila o executável, gera o instalador e cria a **release** com o
+`IsoForge-Setup.exe` anexado. Os usuários recebem a atualização automaticamente ao abrir o app.
 
 ---
 

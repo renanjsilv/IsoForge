@@ -1,0 +1,50 @@
+name: Release
+
+# Ao criar uma tag vX.Y.Z, compila o exe + instalador e publica a release com o .exe.
+# Fluxo para lançar uma nova versão:  git tag v1.2.0 && git push origin v1.2.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Derivar versão da tag
+        id: ver
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Versão: $v"
+
+      - name: SmokeTest (validação)
+        run: dotnet run --project SmokeTest -c Debug --nologo
+
+      - name: Publicar executável único
+        run: dotnet publish IsoForge.csproj -c Release --nologo -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Gerar instalador
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.ver.outputs.version }} installer\IsoForge.iss
+
+      - name: Publicar release com o instalador
+        uses: softprops/action-gh-release@v2
+        with:
+          name: IsoForge ${{ steps.ver.outputs.version }}
+          files: dist/IsoForge-Setup.exe
+          generate_release_notes: true
