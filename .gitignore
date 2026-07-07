@@ -1,0 +1,8 @@
+bin/
+obj/
+*.user
+.vs/
+Installers/
+dist/
+# Tools/oscdimg.exe é versionado de propósito (vem embutido no app)
+!Tools/oscdimg.exe

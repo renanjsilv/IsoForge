@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>IsoForge.SmokeTest</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\BuildConfig.cs" Link="Models\BuildConfig.cs" />
+    <Compile Include="..\Core\UnattendGenerator.cs" Link="Core\UnattendGenerator.cs" />
+    <Compile Include="..\Core\InstallScriptGenerator.cs" Link="Core\InstallScriptGenerator.cs" />
+    <Compile Include="..\Core\SetupCompleteGenerator.cs" Link="Core\SetupCompleteGenerator.cs" />
+    <Compile Include="..\Core\DiskPrepGenerator.cs" Link="Core\DiskPrepGenerator.cs" />
+    <Compile Include="..\Core\AppPresets.cs" Link="Core\AppPresets.cs" />
+    <Compile Include="..\Core\IsoPipeline.cs" Link="Core\IsoPipeline.cs" />
+    <Compile Include="..\Core\Oscdimg.cs" Link="Core\Oscdimg.cs" />
+    <Compile Include="..\Core\TestScripts.cs" Link="Core\TestScripts.cs" />
+    <Compile Include="..\Core\ExtraScriptsGenerator.cs" Link="Core\ExtraScriptsGenerator.cs" />
+    <Compile Include="..\Core\UnitSelectorGenerator.cs" Link="Core\UnitSelectorGenerator.cs" />
+    <Compile Include="..\Core\OfficeConfig.cs" Link="Core\OfficeConfig.cs" />
+    <Compile Include="..\Core\GoldenImageScripts.cs" Link="Core\GoldenImageScripts.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>IsoForge</AssemblyName>
+    <RootNamespace>IsoForge</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Authors>renanjsilv</Authors>
+    <Product>IsoForge - Personalizador de ISO do Windows 11</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- SmokeTest é um projeto separado; não faz parte do app -->
+    <Compile Remove="SmokeTest\**" />
+    <None Remove="SmokeTest\**" />
+    <Page Remove="SmokeTest\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ícone do app usado também na janela (Window Icon) -->
+    <Resource Include="icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- oscdimg.exe (amd64, do Windows ADK) embutido no exe: extraído em runtime -->
+    <EmbeddedResource Include="Tools\oscdimg.exe">
+      <LogicalName>IsoForge.Tools.oscdimg.exe</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+</Project>
