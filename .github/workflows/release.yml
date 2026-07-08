@@ -14,6 +14,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # histórico completo + tags (para gerar as notas)
 
       - uses: actions/setup-dotnet@v4
         with:
@@ -26,6 +28,20 @@ jobs:
           $v = "${{ github.ref_name }}".TrimStart('v')
           "version=$v" >> $env:GITHUB_OUTPUT
           Write-Host "Versão: $v"
+
+      - name: Gerar notas da versão (a partir dos commits desde a tag anterior)
+        id: notes
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $prev = (git describe --tags --abbrev=0 "$tag^" 2>$null)
+          $range = if ($prev) { "$prev..$tag" } else { $tag }
+          $log = (git log $range --no-merges --pretty=format:"- %s") -join "`n"
+          if ([string]::IsNullOrWhiteSpace($log)) { $log = "- Atualização de manutenção." }
+          Write-Host $log
+          "notes<<__EOF__" >> $env:GITHUB_OUTPUT
+          "$log" >> $env:GITHUB_OUTPUT
+          "__EOF__" >> $env:GITHUB_OUTPUT
 
       - name: SmokeTest (validação)
         run: dotnet run --project SmokeTest -c Debug --nologo
@@ -46,5 +62,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: IsoForge ${{ steps.ver.outputs.version }}
+          body: |
+            ## Novidades da versão ${{ steps.ver.outputs.version }}
+
+            ${{ steps.notes.outputs.notes }}
           files: dist/IsoForge-Setup.exe
-          generate_release_notes: true
