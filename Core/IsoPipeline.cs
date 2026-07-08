@@ -13,10 +13,16 @@ namespace IsoForge.Core;
 public class IsoPipeline
 {
     readonly IProgress<string> _log;
+    readonly IProgress<int>? _pct;
 
-    public IsoPipeline(IProgress<string> log) => _log = log;
+    public IsoPipeline(IProgress<string> log, IProgress<int>? percent = null)
+    {
+        _log = log;
+        _pct = percent;
+    }
 
     void Log(string msg) => _log.Report(msg);
+    void Pct(int p) => _pct?.Report(p);
 
     // ------------------------------------------------------------------
     // Build completo
@@ -33,6 +39,7 @@ public class IsoPipeline
         var staging = Path.Combine(root, $"work_{DateTime.Now:yyyyMMdd_HHmmss}");
         Directory.CreateDirectory(staging);
         Log($"Pasta de trabalho: {staging}");
+        Pct(3);
 
         try
         {
@@ -40,7 +47,9 @@ public class IsoPipeline
             try
             {
                 Log($"ISO montada em {drive}: (rótulo: {label})");
+                Pct(10);
                 await ExtractAsync(drive, staging, ct);
+                Pct(50);
             }
             finally
             {
@@ -51,8 +60,11 @@ public class IsoPipeline
             ClearReadOnly(new DirectoryInfo(staging));
             if (cfg.UseCapturedWim)
                 SwapInstallWim(cfg.CapturedWimPath, staging);
+            Pct(58);
             InjectFiles(cfg, staging);
+            Pct(68);
             await BuildIsoAsync(cfg, staging, label, ct);
+            Pct(100);
 
             Log("");
             Log($"✔ ISO gerada com sucesso: {cfg.OutputIsoPath}");

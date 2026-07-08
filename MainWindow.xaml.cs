@@ -30,6 +30,7 @@ public partial class MainWindow : Window
             ? BuildConfig.DefaultOfficeConfig : _config.OfficeConfigXml;
 
         ApplyConfigToUi();
+        RefreshProfiles();
 
         // Salva ao fechar (CollectConfig já persiste) — garante que nada preenchido se perca.
         Closing += (_, __) => { try { CollectConfig(); } catch { } };
@@ -71,13 +72,12 @@ public partial class MainWindow : Window
         try
         {
             var info = await Updater.CheckAsync();
-            if (info == null) return; // já atualizado / sem internet / sem release
+            if (info == null || Updater.IsSkipped(info.Version)) return; // atualizado / pulado / sem internet
 
-            var r = MessageBox.Show(this,
-                $"Nova versão do IsoForge disponível: {info.Version} (você tem {Updater.CurrentVersion.ToString(3)}).\n\n" +
-                "Baixar e instalar agora? O programa fecha para atualizar (suas configurações ficam salvas).",
-                "IsoForge — atualização disponível", MessageBoxButton.YesNo, MessageBoxImage.Information);
-            if (r != MessageBoxResult.Yes) return;
+            var dlg = new UpdateWindow(info.Version, Updater.CurrentVersion, info.Notes) { Owner = this };
+            dlg.ShowDialog();
+            if (dlg.Choice == UpdateChoice.Skip) { Updater.SkipVersion(info.Version); return; }
+            if (dlg.Choice != UpdateChoice.Update) return; // "Depois"
 
             var pct = new Progress<double>(p => Dispatcher.Invoke(() => TxtHeaderStatus.Text = $"Baixando atualização: {p:0}%"));
             var path = await Updater.DownloadAsync(info, pct);
@@ -694,16 +694,102 @@ public partial class MainWindow : Window
         TxtPostScript.Text = _config.PostScriptPath;
     }
 
+    // ------------------------------------------------------------------
+    // Perfis de configuração nomeados
+    // ------------------------------------------------------------------
+    bool _loadingProfiles;
+
+    void RefreshProfiles(string? select = null)
+    {
+        _loadingProfiles = true;
+        CmbProfile.ItemsSource = SettingsStore.ListProfiles();
+        if (select != null) CmbProfile.SelectedItem = select;
+        _loadingProfiles = false;
+    }
+
+    void Profile_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingProfiles || CmbProfile.SelectedItem is not string name) return;
+        var cfg = SettingsStore.LoadProfile(name);
+        if (cfg == null) return;
+        _config = cfg;
+        GridApps.ItemsSource = _config.Apps;
+        GridVpn.ItemsSource = _config.VpnTunnels;
+        GridUnits.ItemsSource = _config.Units;
+        TxtOfficeConfig.Text = string.IsNullOrWhiteSpace(_config.OfficeConfigXml)
+            ? BuildConfig.DefaultOfficeConfig : _config.OfficeConfigXml;
+        ApplyConfigToUi();
+        UpdateGoldenSummary();
+        AppendLog($"Perfil carregado: {name}");
+    }
+
+    void SaveProfile_Click(object sender, RoutedEventArgs e)
+    {
+        if (CmbProfile.SelectedItem is string name)
+        {
+            SettingsStore.SaveProfile(name, CollectConfig());
+            AppendLog($"Perfil salvo: {name}");
+        }
+        else SaveProfileAs_Click(sender, e);
+    }
+
+    void SaveProfileAs_Click(object sender, RoutedEventArgs e)
+    {
+        var name = Prompt("Nome do perfil (ex.: Matriz, Cliente X):", "Salvar perfil",
+            CmbProfile.SelectedItem as string ?? "");
+        if (string.IsNullOrWhiteSpace(name)) return;
+        SettingsStore.SaveProfile(name, CollectConfig());
+        RefreshProfiles(select: name);
+        AppendLog($"Perfil salvo: {name}");
+    }
+
+    void DeleteProfile_Click(object sender, RoutedEventArgs e)
+    {
+        if (CmbProfile.SelectedItem is not string name) return;
+        if (MessageBox.Show(this, $"Excluir o perfil \"{name}\"?", "IsoForge",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        SettingsStore.DeleteProfile(name);
+        RefreshProfiles();
+        AppendLog($"Perfil excluído: {name}");
+    }
+
+    /// <summary>Caixa de entrada simples (sem dependências externas).</summary>
+    string? Prompt(string message, string title, string def = "")
+    {
+        var win = new Window
+        {
+            Title = title, Width = 400, SizeToContent = SizeToContent.Height, Owner = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner, ResizeMode = ResizeMode.NoResize
+        };
+        var sp = new StackPanel { Margin = new Thickness(16) };
+        sp.Children.Add(new TextBlock { Text = message, Margin = new Thickness(0, 0, 0, 8), TextWrapping = TextWrapping.Wrap });
+        var tb = new TextBox { Text = def };
+        sp.Children.Add(tb);
+        var btns = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
+        string? result = null;
+        var ok = new Button { Content = "OK", Width = 90, IsDefault = true, Margin = new Thickness(0, 0, 8, 0) };
+        ok.Click += (_, __) => { result = tb.Text; win.DialogResult = true; };
+        var cancel = new Button { Content = "Cancelar", Width = 90, IsCancel = true };
+        btns.Children.Add(ok); btns.Children.Add(cancel);
+        sp.Children.Add(btns);
+        win.Content = sp;
+        tb.Loaded += (_, __) => { tb.Focus(); tb.SelectAll(); };
+        return win.ShowDialog() == true ? result : null;
+    }
+
     async void Build_Click(object sender, RoutedEventArgs e)
     {
         var cfg = CollectConfig();
         SetBusy(true);
         _cts = new CancellationTokenSource();
         var progress = new Progress<string>(AppendLog);
+        var percent = new Progress<int>(p => Dispatcher.Invoke(() => BuildProgress.Value = p));
+        BuildProgress.Value = 0;
+        BuildProgress.Visibility = Visibility.Visible;
         try
         {
             AppendLog("==== Iniciando geração da ISO ====");
-            await Task.Run(() => new IsoPipeline(progress).BuildAsync(cfg, _cts.Token));
+            await Task.Run(() => new IsoPipeline(progress, percent).BuildAsync(cfg, _cts.Token));
             MessageBox.Show(this, $"ISO gerada com sucesso:\n{cfg.OutputIsoPath}", "IsoForge",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
@@ -715,6 +801,7 @@ public partial class MainWindow : Window
         finally
         {
             SetBusy(false);
+            BuildProgress.Visibility = Visibility.Collapsed;
         }
     }
 

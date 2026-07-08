@@ -41,16 +41,65 @@ public static class SettingsStore
         try
         {
             if (File.Exists(FilePath))
-            {
-                var enc = File.ReadAllBytes(FilePath);
-                var json = ProtectedData.Unprotect(enc, null, DataProtectionScope.CurrentUser);
-                return JsonSerializer.Deserialize<BuildConfig>(json);
-            }
+                return JsonSerializer.Deserialize<BuildConfig>(
+                    ProtectedData.Unprotect(File.ReadAllBytes(FilePath), null, DataProtectionScope.CurrentUser));
             // Migração do formato antigo (texto puro): lê e o próximo Save já grava cifrado.
             if (File.Exists(LegacyJsonPath))
                 return JsonSerializer.Deserialize<BuildConfig>(File.ReadAllText(LegacyJsonPath));
         }
         catch { /* arquivo corrompido / de outra máquina / versão antiga: usa padrão */ }
         return null;
+    }
+
+    // ------------------------------------------------------------------
+    // Perfis nomeados (ex.: "Matriz", "Cliente X") — cada um cifrado em profiles\<nome>.dat
+    // ------------------------------------------------------------------
+    static string ProfilesDir => Path.Combine(Dir, "profiles");
+    static string ProfilePath(string name) => Path.Combine(ProfilesDir, Sanitize(name) + ".dat");
+    static string Sanitize(string name) => string.Join("_", name.Trim().Split(Path.GetInvalidFileNameChars()));
+
+    public static string[] ListProfiles()
+    {
+        try
+        {
+            if (Directory.Exists(ProfilesDir))
+                return Directory.GetFiles(ProfilesDir, "*.dat")
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(n => !string.IsNullOrEmpty(n))
+                    .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                    .ToArray()!;
+        }
+        catch { }
+        return Array.Empty<string>();
+    }
+
+    public static void SaveProfile(string name, BuildConfig c)
+    {
+        try
+        {
+            Directory.CreateDirectory(ProfilesDir);
+            var json = JsonSerializer.SerializeToUtf8Bytes(c, Opts);
+            File.WriteAllBytes(ProfilePath(name), ProtectedData.Protect(json, null, DataProtectionScope.CurrentUser));
+        }
+        catch { }
+    }
+
+    public static BuildConfig? LoadProfile(string name)
+    {
+        try
+        {
+            var p = ProfilePath(name);
+            if (File.Exists(p))
+                return JsonSerializer.Deserialize<BuildConfig>(
+                    ProtectedData.Unprotect(File.ReadAllBytes(p), null, DataProtectionScope.CurrentUser));
+        }
+        catch { }
+        return null;
+    }
+
+    public static void DeleteProfile(string name)
+    {
+        try { var p = ProfilePath(name); if (File.Exists(p)) File.Delete(p); }
+        catch { }
     }
 }

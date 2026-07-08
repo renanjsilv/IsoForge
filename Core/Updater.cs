@@ -19,7 +19,33 @@ public static class Updater
     public static Version CurrentVersion =>
         Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0);
 
-    public record UpdateInfo(Version Version, string Tag, string DownloadUrl);
+    public record UpdateInfo(Version Version, string Tag, string DownloadUrl, string Notes);
+
+    static string SkipFile => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "IsoForge", "skipped-version.txt");
+
+    /// <summary>Marca uma versão para não ser mais oferecida (até surgir uma maior).</summary>
+    public static void SkipVersion(Version v)
+    {
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SkipFile)!);
+            File.WriteAllText(SkipFile, v.ToString());
+        }
+        catch { }
+    }
+
+    /// <summary>Esta versão (ou anterior) foi marcada como "pular"?</summary>
+    public static bool IsSkipped(Version v)
+    {
+        try
+        {
+            if (File.Exists(SkipFile) && Version.TryParse(File.ReadAllText(SkipFile).Trim(), out var s))
+                return Norm(s) >= Norm(v);
+        }
+        catch { }
+        return false;
+    }
 
     static HttpClient NewClient(TimeSpan timeout)
     {
@@ -40,6 +66,7 @@ public static class Updater
 
         var tag = root.TryGetProperty("tag_name", out var t) ? (t.GetString() ?? "") : "";
         if (!Version.TryParse(tag.TrimStart('v', 'V'), out var latest)) return null;
+        var notes = root.TryGetProperty("body", out var b) ? (b.GetString() ?? "") : "";
 
         // Procura um asset .exe (o instalador).
         string? dl = null;
@@ -57,7 +84,7 @@ public static class Updater
 
         var cur = Norm(CurrentVersion);
         var lat = Norm(latest);
-        return lat > cur ? new UpdateInfo(lat, tag, dl) : null;
+        return lat > cur ? new UpdateInfo(lat, tag, dl, notes) : null;
     }
 
     static Version Norm(Version v) => new(v.Major, v.Minor, Math.Max(v.Build, 0));

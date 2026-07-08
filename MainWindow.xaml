@@ -23,15 +23,27 @@
                     <GradientStop Color="#1D4ED8" Offset="1"/>
                 </LinearGradientBrush>
             </Border.Background>
-            <StackPanel Orientation="Horizontal">
-                <Image Source="icon.ico" Width="44" Height="44" Margin="0,0,14,0"/>
-                <StackPanel VerticalAlignment="Center">
-                    <TextBlock Text="IsoForge" Foreground="White" FontSize="22" FontWeight="Bold"/>
-                    <TextBlock Text="Personalizador de ISO do Windows 11" Foreground="#DBEAFE" FontSize="13"/>
+            <DockPanel>
+                <!-- Perfis (direita do cabeçalho) -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Perfil:" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <ComboBox x:Name="CmbProfile" Width="160" VerticalAlignment="Center"
+                              ToolTip="Salve/carregue várias configurações nomeadas (ex.: Matriz, Cliente X)."
+                              SelectionChanged="Profile_SelectionChanged"/>
+                    <Button Content="Salvar" Style="{StaticResource Secondary}" Padding="10,5" Margin="6,0,0,0" Click="SaveProfile_Click"/>
+                    <Button Content="Salvar como…" Style="{StaticResource Secondary}" Padding="10,5" Margin="4,0,0,0" Click="SaveProfileAs_Click"/>
+                    <Button Content="Excluir" Style="{StaticResource Secondary}" Padding="10,5" Margin="4,0,0,0" Click="DeleteProfile_Click"/>
                 </StackPanel>
-                <TextBlock x:Name="TxtHeaderStatus" Foreground="#DBEAFE" FontSize="12" VerticalAlignment="Center"
-                           Margin="24,0,0,0" TextWrapping="Wrap" MaxWidth="420"/>
-            </StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Image Source="icon.ico" Width="44" Height="44" Margin="0,0,14,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="IsoForge" Foreground="White" FontSize="22" FontWeight="Bold"/>
+                        <TextBlock Text="Personalizador de ISO do Windows 11" Foreground="#DBEAFE" FontSize="13"/>
+                    </StackPanel>
+                    <TextBlock x:Name="TxtHeaderStatus" Foreground="#DBEAFE" FontSize="12" VerticalAlignment="Center"
+                               Margin="24,0,0,0" TextWrapping="Wrap" MaxWidth="360"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Abas -->
@@ -393,12 +405,16 @@
 
         <!-- Rodapé de ações -->
         <Border Grid.Row="2" Background="{StaticResource CardBg}" BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,1" Padding="16,12">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="BtnBuild" Style="{StaticResource Cta}" Content="Gerar ISO personalizada" Click="Build_Click"/>
-                <Button x:Name="BtnSandbox" Style="{StaticResource Secondary}" Content="Testar instalação (Sandbox)" Padding="14,12" Click="TestSandbox_Click"
-                        ToolTip="Instala os apps numa cópia descartável do Windows (Windows Sandbox), igual à VM — sem risco para esta máquina."/>
-                <Button x:Name="BtnDryRun" Style="{StaticResource Secondary}" Content="Somente gerar arquivos (testar sem ISO)" Padding="14,12" Click="DryRun_Click"/>
-                <Button x:Name="BtnTestScript" Style="{StaticResource Secondary}" Content="Salvar script de teste (Hyper-V)" Padding="14,12" Click="SaveTestScript_Click"/>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnBuild" Style="{StaticResource Cta}" Content="Gerar ISO personalizada" Click="Build_Click"/>
+                    <Button x:Name="BtnSandbox" Style="{StaticResource Secondary}" Content="Testar instalação (Sandbox)" Padding="14,12" Click="TestSandbox_Click"
+                            ToolTip="Instala os apps numa cópia descartável do Windows (Windows Sandbox), igual à VM — sem risco para esta máquina."/>
+                    <Button x:Name="BtnDryRun" Style="{StaticResource Secondary}" Content="Somente gerar arquivos (testar sem ISO)" Padding="14,12" Click="DryRun_Click"/>
+                    <Button x:Name="BtnTestScript" Style="{StaticResource Secondary}" Content="Salvar script de teste (Hyper-V)" Padding="14,12" Click="SaveTestScript_Click"/>
+                </StackPanel>
+                <ProgressBar x:Name="BuildProgress" Height="8" Margin="0,12,0,0" Minimum="0" Maximum="100"
+                             Visibility="Collapsed" Foreground="#2563EB"/>
             </StackPanel>
         </Border>
 

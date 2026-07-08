@@ -1,5 +1,7 @@
 # IsoForge — Personalizador de ISO do Windows 11
 
+**🌐 Idioma:** **Português** · [English](README.en.md)
+
 **IsoForge** é um aplicativo Windows (executável único, sem instalar nada — nem .NET)
 que pega uma **ISO oficial do Windows 11** e gera uma **nova ISO personalizada e
 automatizada**: cria o usuário local, instala os programas em silêncio, configura VPN,
@@ -43,9 +45,10 @@ do zero, com o mínimo de cliques.
 - **Teste no Windows Sandbox** — um clique instala os apps numa cópia descartável do
   Windows (igual à VM), sem risco à sua máquina.
 - **Auto‑atualização** — ao abrir, checa a última versão no GitHub e oferece baixar/instalar.
-- **Configuração salva localmente** — tudo que você preenche fica em
-  `%APPDATA%\IsoForge\settings.json` e sobrevive às atualizações. Nada sensível vai para
+- **Configuração salva localmente** — tudo que você preenche fica **cifrado (DPAPI)** em
+  `%APPDATA%\IsoForge\settings.dat` e sobrevive às atualizações. Nada sensível vai para
   o código.
+- **Perfis nomeados** — salve/carregue várias configurações (ex.: "Matriz", "Cliente X").
 
 ---
 
