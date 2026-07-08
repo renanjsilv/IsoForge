@@ -115,10 +115,18 @@ public static class Updater
         return dest;
     }
 
-    /// <summary>Executa o instalador baixado (que fecha/atualiza o app) e encerra o IsoForge.</summary>
+    /// <summary>
+    /// Executa o instalador baixado em modo SILENCIOSO (mostra só a barra de progresso do
+    /// Inno Setup, sem telas nem o prefetch) e encerra o IsoForge. Ao terminar, o próprio
+    /// instalador reabre o app com --updated (ver installer/IsoForge.iss).
+    /// </summary>
     public static void RunInstaller(string installerPath)
     {
-        Process.Start(new ProcessStartInfo(installerPath) { UseShellExecute = true });
+        Process.Start(new ProcessStartInfo(installerPath)
+        {
+            UseShellExecute = true,
+            Arguments = "/SILENT /SUPPRESSMSGBOXES /NORESTART"
+        });
         System.Windows.Application.Current.Shutdown();
     }
 }

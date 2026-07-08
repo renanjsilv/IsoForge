@@ -61,7 +61,21 @@ public partial class MainWindow : Window
         }
         AppendLog("");
         StartInstallerRefresh();
-        _ = CheckForUpdateAsync();
+
+        if (Environment.GetCommandLineArgs().Any(a => a.Equals("--updated", StringComparison.OrdinalIgnoreCase)))
+        {
+            // Reaberto pelo instalador após um auto-update silencioso.
+            var v = Updater.CurrentVersion.ToString(3);
+            TxtHeaderStatus.Text = $"✔ Atualizado com sucesso para a versão {v}";
+            AppendLog($"✔ Atualizado com sucesso para a versão {v}.");
+            Loaded += (_, __) => MessageBox.Show(this,
+                $"Atualizado com sucesso para a versão {v}!", "IsoForge",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        else
+        {
+            _ = CheckForUpdateAsync();
+        }
     }
 
     // ------------------------------------------------------------------

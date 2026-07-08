@@ -5,7 +5,7 @@
 #define AppName "IsoForge"
 ; AppVersion pode ser sobrescrito pela linha de comando (CI): ISCC /DAppVersion=1.2.3
 #ifndef AppVersion
-  #define AppVersion "1.2.0"
+  #define AppVersion "1.3.0"
 #endif
 #define AppPublisher "IsoForge"
 #define AppExe "IsoForge.exe"
@@ -29,13 +29,15 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; Instala em Arquivos de Programas -> requer elevação
 PrivilegesRequired=admin
+; Fecha o IsoForge em execução (ex.: durante o auto-update) para poder substituir o exe.
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Criar atalho na Área de Trabalho"; GroupDescription: "Atalhos:"
-Name: "prefetch"; Description: "Baixar os instaladores (7-Zip, AnyDesk, Office) agora"; GroupDescription: "Após instalar:"
 
 [Files]
 Source: "..\bin\Release\net8.0-windows\win-x64\publish\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
@@ -52,7 +54,7 @@ Name: "{group}\Desinstalar {#AppName}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
 
 [Run]
-; Pré-baixa os instaladores logo após instalar (se o usuário marcou a tarefa)
-Filename: "{app}\{#AppExe}"; Parameters: "--fetch"; StatusMsg: "Baixando instaladores mais recentes..."; Flags: runhidden waituntilterminated; Tasks: prefetch
-; Oferece abrir o app ao final
+; Instalação interativa: oferece abrir o app ao final (o app baixa os instaladores sozinho ao abrir).
 Filename: "{app}\{#AppExe}"; Description: "Abrir o {#AppName}"; Flags: nowait postinstall skipifsilent
+; Auto-update silencioso: reabre o app sinalizando "Atualizado com sucesso".
+Filename: "{app}\{#AppExe}"; Parameters: "--updated"; Flags: nowait postinstall; Check: WizardSilent
