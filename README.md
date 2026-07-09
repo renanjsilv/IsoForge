@@ -16,7 +16,7 @@
 
 ---
 
-**IsoForge** é um aplicativo Windows (executável único, sem instalar nada — nem .NET)
+**IsoForge** é um aplicativo Windows
 que pega uma **ISO oficial do Windows 11** e gera uma **nova ISO personalizada e
 automatizada**: cria o usuário local, instala os programas em silêncio, configura VPN,
 aparência, nome da máquina por unidade, ingresso no Entra ID e muito mais — tudo pronto
