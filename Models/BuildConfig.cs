@@ -9,6 +9,17 @@ public enum AppKind
     Office
 }
 
+/// <summary>Tema padrão do Windows aplicado no 1º logon.</summary>
+public enum WindowsThemeMode
+{
+    /// <summary>Não altera o tema (mantém o padrão do Windows).</summary>
+    Default,
+    /// <summary>Tema claro (branco).</summary>
+    Light,
+    /// <summary>Tema escuro.</summary>
+    Dark
+}
+
 /// <summary>Quando a tela de seleção de unidade aparece.</summary>
 public enum UnitSelectionMethod
 {
@@ -117,6 +128,8 @@ public class BuildConfig
     // Aparência
     public string WallpaperPath { get; set; } = "";        // imagem definida como papel de parede padrão
     public string LockScreenPath { get; set; } = "";       // imagem da tela de bloqueio / login
+    // Tema padrão do Windows (claro/escuro) aplicado no 1º logon e para novos usuários.
+    public WindowsThemeMode WindowsTheme { get; set; } = WindowsThemeMode.Default;
 
     // FortiClient VPN — vazio por padrão; adicione os seus túneis (ficam salvos localmente).
     public ObservableCollection<VpnTunnel> VpnTunnels { get; set; } = new();
@@ -140,6 +153,8 @@ public class BuildConfig
     // Aplicativos
     public ObservableCollection<AppEntry> Apps { get; set; } = new();
     public string OfficeConfigXml { get; set; } = DefaultOfficeConfig;
+    // Idioma do Office (ID do ODT: pt-br, en-us, es-es, pt-pt...).
+    public string OfficeLanguage { get; set; } = "pt-br";
 
     // Office offline: instala do arquivo local (sem baixar da internet no 1º logon).
     // OfficeSourceFolder contém setup.exe + a pasta Office\Data (gerada por setup.exe /download).
@@ -195,4 +210,17 @@ public class BuildConfig
   <RemoveMSI />
 </Configuration>
 """;
+
+    /// <summary>Gera o XML de configuração do ODT para o idioma escolhido.</summary>
+    public static string BuildOfficeConfig(string languageId) =>
+        "<Configuration>\n" +
+        "  <Add OfficeClientEdition=\"64\" Channel=\"Current\">\n" +
+        "    <Product ID=\"O365ProPlusRetail\">\n" +
+        $"      <Language ID=\"{languageId}\" />\n" +
+        "    </Product>\n" +
+        "  </Add>\n" +
+        "  <Display Level=\"Full\" AcceptEULA=\"TRUE\" />\n" +
+        "  <Updates Enabled=\"TRUE\" />\n" +
+        "  <RemoveMSI />\n" +
+        "</Configuration>";
 }

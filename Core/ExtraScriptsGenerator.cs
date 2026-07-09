@@ -17,17 +17,40 @@ public static class ExtraScriptsGenerator
     public const string FortiVpnXmlName = "FortiClient-vpn.xml";
 
     public static bool HasAppearance(BuildConfig cfg)
-        => !string.IsNullOrWhiteSpace(cfg.WallpaperPath) || !string.IsNullOrWhiteSpace(cfg.LockScreenPath);
+        => !string.IsNullOrWhiteSpace(cfg.WallpaperPath) || !string.IsNullOrWhiteSpace(cfg.LockScreenPath)
+           || cfg.WindowsTheme != WindowsThemeMode.Default;
 
     // ------------------------------------------------------------------
-    // Aparência: papel de parede + tela de bloqueio (login)
+    // Aparência: papel de parede + tela de bloqueio (login) + tema claro/escuro
     // ------------------------------------------------------------------
-    public static string Appearance(string? wallpaperFileName, string? lockScreenFileName)
+    public static string Appearance(string? wallpaperFileName, string? lockScreenFileName,
+        WindowsThemeMode theme = WindowsThemeMode.Default)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# Aparencia padrao (IsoForge): papel de parede + tela de bloqueio");
+        sb.AppendLine("# Aparencia padrao (IsoForge): papel de parede + tela de bloqueio + tema");
         sb.AppendLine("$ErrorActionPreference = 'SilentlyContinue'");
         sb.AppendLine();
+
+        if (theme != WindowsThemeMode.Default)
+        {
+            // 1 = claro (branco), 0 = escuro.
+            int v = theme == WindowsThemeMode.Light ? 1 : 0;
+            var nome = theme == WindowsThemeMode.Light ? "claro" : "escuro";
+            sb.AppendLine($"# Tema do Windows: {nome}");
+            sb.AppendLine("$per = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'");
+            sb.AppendLine("New-Item -Path $per -Force | Out-Null");
+            sb.AppendLine($"Set-ItemProperty $per -Name 'AppsUseLightTheme'   -Value {v} -Type DWord -Force");
+            sb.AppendLine($"Set-ItemProperty $per -Name 'SystemUsesLightTheme' -Value {v} -Type DWord -Force");
+            sb.AppendLine("# Novos usuarios: aplica tambem no hive padrao (C:\\Users\\Default).");
+            sb.AppendLine("reg load HKU\\IsoForgeDef \"C:\\Users\\Default\\NTUSER.DAT\" 2>$null | Out-Null");
+            sb.AppendLine("$k = 'HKU\\IsoForgeDef\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize'");
+            sb.AppendLine($"reg add $k /v AppsUseLightTheme   /t REG_DWORD /d {v} /f | Out-Null");
+            sb.AppendLine($"reg add $k /v SystemUsesLightTheme /t REG_DWORD /d {v} /f | Out-Null");
+            sb.AppendLine("[gc]::Collect(); [gc]::WaitForPendingFinalizers()");
+            sb.AppendLine("reg unload HKU\\IsoForgeDef 2>$null | Out-Null");
+            sb.AppendLine($"Write-Output \"IsoForge: tema {nome} aplicado\"");
+            sb.AppendLine();
+        }
 
         if (!string.IsNullOrWhiteSpace(wallpaperFileName))
         {

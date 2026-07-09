@@ -1,6 +1,20 @@
-# IsoForge — Windows 11 ISO Customizer
+<div align="center">
+
+<img src="docs/logo.png" width="128" alt="IsoForge"/>
+
+# IsoForge
+
+### Windows 11 ISO Customizer
+
+[![Release](https://img.shields.io/github/v/release/renanjsilv/IsoForge?style=for-the-badge&label=Release&color=2563EB)](https://github.com/renanjsilv/IsoForge/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/renanjsilv/IsoForge/total?style=for-the-badge&label=Downloads&color=2ea043)](https://github.com/renanjsilv/IsoForge/releases)
+[![License](https://img.shields.io/github/license/renanjsilv/IsoForge?style=for-the-badge&label=License&color=EA580C)](LICENSE)
 
 **🌐 Language:** [Português](README.md) · **English**
+
+</div>
+
+---
 
 **IsoForge** is a Windows app (single executable — nothing to install, not even .NET)
 that takes an **official Windows 11 ISO** and produces a **customized, automated ISO**:
@@ -23,11 +37,14 @@ few-clicks, from-scratch install.
     e‑mail + **Entra ID join**). The user signs in as a **standard** user, your local
     (admin) account is created in the background, and apps are installed as SYSTEM.
     Optionally **removes the setup user from the Administrators group**.
-- **Silent app installation** at first logon: Office 365 (via ODT), AnyDesk, 7‑Zip,
+- **Apps as cards** — pick programs by clicking cards; each app's options appear as soon as
+  you select it. Silent install at first logon: Office 365 (via ODT), AnyDesk, 7‑Zip,
   FortiClient, Adobe Reader and any `.exe`/`.msi`. IsoForge **auto-downloads** the latest
   versions of common apps.
-- **Office offline** — embeds Office in the ISO (installs **without internet**), pinning
-  the version so ODT doesn't reach the CDN.
+- **Office online/offline + language** — choose whether Office downloads at first logon
+  (online) or is embedded in the ISO (offline, **no internet**), and the language
+  (pt‑BR, en‑US, es‑ES, pt‑PT).
+- **Windows light or dark theme** — sets the apps/system theme at first logon and for new users.
 - **Automatic disk selection (optional)** — in WinPE it picks the first fixed disk that is
   **not the USB stick**, partitions it and installs unattended. Falls back to manual if no
   safe disk is found.
@@ -55,8 +72,8 @@ few-clicks, from-scratch install.
 |---|---|
 | **ISO** | Source ISO, output path, `oscdimg` (bundled) and **automatic disk selection**. |
 | **System & user** | Deployment mode (Local × Entra ID), local user, password, machine name, edition, requirement bypass. |
-| **Apps** | Add apps (auto-downloaded) and configure Office (online/offline). |
-| **Personalization** | Wallpaper, lock screen, FortiClient VPN, site selection and scripts. |
+| **Apps** | Pick apps as cards (auto-downloaded); options appear on selection — Office (online/offline + language) and FortiClient VPN. |
+| **Personalization** | Wallpaper, lock screen, **light/dark theme**, per-site machine naming and scripts. |
 | **Golden image** | Automatic (Hyper‑V) build of an image with everything pre-installed. |
 
 ![System & user](docs/02-sistema-usuario.png)

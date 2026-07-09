@@ -439,7 +439,7 @@ public class IsoPipeline
                 Log($"Tela de bloqueio incluída: {Path.GetFileName(cfg.LockScreenPath)}");
             }
             File.WriteAllText(Path.Combine(setupDir, ExtraScriptsGenerator.AppearanceFileName),
-                ExtraScriptsGenerator.Appearance(wpName, lockName), new UTF8Encoding(true)); // BOM p/ PowerShell 5.1
+                ExtraScriptsGenerator.Appearance(wpName, lockName, cfg.WindowsTheme), new UTF8Encoding(true)); // BOM p/ PowerShell 5.1
         }
 
         // 4. FortiClient VPN

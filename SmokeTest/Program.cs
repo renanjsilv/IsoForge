@@ -343,6 +343,7 @@ if (Directory.Exists(installers))
         Password = "S3nh@Forte!",
         WallpaperPath = wallpaper,
         LockScreenPath = lockimg,
+        WindowsTheme = WindowsThemeMode.Dark, // exercita o tema escuro no dry-run
         PostScriptPath = "", // sem script extra
         VpnUseTextImport = true // exercita o caminho do XML/FCConfig no dry-run
     };
@@ -379,6 +380,7 @@ if (Directory.Exists(installers))
     Check(File.Exists(Path.Combine(setupDir, "Set-Appearance.ps1")), "dry-run: Set-Appearance.ps1 gerado");
     Check(File.Exists(Path.Combine(setupDir, "lockscreen.png")), "dry-run: imagem da tela de bloqueio copiada");
     var appearance = File.ReadAllText(Path.Combine(setupDir, "Set-Appearance.ps1"));
+    Check(appearance.Contains("AppsUseLightTheme") && appearance.Contains("SystemUsesLightTheme") && appearance.Contains("/d 0 /f"), "dry-run: tema escuro aplicado (AppsUseLightTheme/SystemUsesLightTheme = 0, inclusive hive padrão)");
     Check(appearance.Contains("PersonalizationCSP") && appearance.Contains("LockScreenImagePath"), "dry-run: tela de bloqueio mantém canal PersonalizationCSP (Intune pode trocar)");
     Check(appearance.Contains(@"Policies\Microsoft\Windows\Personalization") && appearance.Contains("LockScreenImage"), "dry-run: tela de bloqueio também via política de Personalização (confiável, evita tela preta)");
     Check(appearance.Contains("IsoForgeLock$ext") && appearance.Contains("GetExtension"), "dry-run: tela de bloqueio preserva o formato real da imagem (não força .jpg)");

@@ -3,61 +3,91 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="IsoForge — Personalizador de ISO do Windows 11"
         Icon="icon.ico"
-        Width="1040" Height="860" MinWidth="920" MinHeight="680"
+        Width="1180" Height="900" MinWidth="1020" MinHeight="720"
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
         Background="{StaticResource WindowBg}">
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="232"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="68"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="150"/>
+            <RowDefinition Height="140"/>
         </Grid.RowDefinitions>
 
-        <!-- Cabeçalho -->
-        <Border Grid.Row="0" Padding="20,16">
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#3B82F6" Offset="0"/>
-                    <GradientStop Color="#1D4ED8" Offset="1"/>
-                </LinearGradientBrush>
-            </Border.Background>
+        <!-- ============ SIDEBAR ============ -->
+        <Border Grid.Column="0" Grid.RowSpan="4" Background="{StaticResource SidebarGradient}">
             <DockPanel>
-                <!-- Perfis (direita do cabeçalho) -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="68" Margin="18,0,0,0">
+                    <Image Source="icon.ico" Width="36" Height="36" VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center" Margin="10,0,0,0">
+                        <TextBlock Text="IsoForge" Foreground="White" FontSize="19" FontWeight="Bold"/>
+                        <TextBlock Text="Windows 11 ISO Studio" Foreground="#64748B" FontSize="10.5"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Bottom" Margin="18,0,18,16">
+                    <Border Height="1" Background="#1E293B" Margin="0,0,0,12"/>
+                    <TextBlock FontSize="11.5" ToolTip="Abrir o projeto no GitHub">
+                        <Hyperlink x:Name="LinkGithub" NavigateUri="https://github.com/renanjsilv/IsoForge"
+                                   RequestNavigate="Github_RequestNavigate"
+                                   Foreground="#94A3B8" TextDecorations="{x:Null}">
+                            <Run x:Name="RunVersion" Text="v1.0.0"/>
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock FontSize="10.5" Margin="0,2,0,0" ToolTip="Abrir o projeto no GitHub">
+                        <Hyperlink NavigateUri="https://github.com/renanjsilv/IsoForge"
+                                   RequestNavigate="Github_RequestNavigate"
+                                   Foreground="#60A5FA" TextDecorations="{x:Null}">
+                            github.com/renanjsilv/IsoForge
+                        </Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+                <Grid/>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ TOPBAR ============ -->
+        <Border Grid.Column="1" Grid.Row="0" Background="{StaticResource CardBg}"
+                BorderBrush="{StaticResource CardBorder}" BorderThickness="0,0,0,1" Padding="24,0">
+            <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Perfil:" Foreground="White" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <ComboBox x:Name="CmbProfile" Width="160" VerticalAlignment="Center"
+                    <TextBlock Text="Perfil" Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="CmbProfile" Width="170" Height="34"
                               ToolTip="Salve/carregue várias configurações nomeadas (ex.: Matriz, Cliente X)."
                               SelectionChanged="Profile_SelectionChanged"/>
-                    <Button Content="Salvar" Style="{StaticResource Secondary}" Padding="10,5" Margin="6,0,0,0" Click="SaveProfile_Click"/>
-                    <Button Content="Salvar como…" Style="{StaticResource Secondary}" Padding="10,5" Margin="4,0,0,0" Click="SaveProfileAs_Click"/>
-                    <Button Content="Excluir" Style="{StaticResource Secondary}" Padding="10,5" Margin="4,0,0,0" Click="DeleteProfile_Click"/>
+                    <Button Content="Salvar" Style="{StaticResource Secondary}" Padding="12,7" Margin="8,0,0,0" Click="SaveProfile_Click"/>
+                    <Button Content="Salvar como…" Style="{StaticResource Secondary}" Padding="12,7" Margin="6,0,0,0" Click="SaveProfileAs_Click"/>
+                    <Button Content="Excluir" Style="{StaticResource Secondary}" Padding="12,7" Margin="6,0,0,0" Click="DeleteProfile_Click"/>
                 </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Image Source="icon.ico" Width="44" Height="44" Margin="0,0,14,0"/>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="IsoForge" Foreground="White" FontSize="22" FontWeight="Bold"/>
-                        <TextBlock Text="Personalizador de ISO do Windows 11" Foreground="#DBEAFE" FontSize="13"/>
-                    </StackPanel>
-                    <TextBlock x:Name="TxtHeaderStatus" Foreground="#DBEAFE" FontSize="12" VerticalAlignment="Center"
-                               Margin="24,0,0,0" TextWrapping="Wrap" MaxWidth="360"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{StaticResource AccentSoft}" CornerRadius="9" Width="34" Height="34" Margin="0,0,11,0">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{StaticResource Accent}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Text="{Binding SelectedItem.Tag, ElementName=MainTabs}"/>
+                    </Border>
+                    <TextBlock FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"
+                               Text="{Binding SelectedItem.Header, ElementName=MainTabs}"/>
                 </StackPanel>
             </DockPanel>
         </Border>
 
-        <!-- Abas -->
-        <TabControl Grid.Row="1" Margin="16,12,16,0" Padding="0">
+        <!-- ============ NAVEGAÇÃO + CONTEÚDO ============ -->
+        <TabControl x:Name="MainTabs" Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1">
             <TabControl.Resources>
                 <Style TargetType="ScrollViewer">
                     <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
                 </Style>
             </TabControl.Resources>
 
-            <!-- ISO -->
-            <TabItem Header="ISO">
+            <!-- ============ ISO ============ -->
+            <TabItem Header="ISO" Tag="&#xE74E;">
                 <ScrollViewer>
-                    <StackPanel Margin="4,14,12,4">
+                    <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
                         <GroupBox Header="Imagem ISO">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -94,44 +124,41 @@
                                 <CheckBox x:Name="ChkAutoDisk" Content="Selecionar o disco automaticamente e instalar (nunca o pendrive)"/>
                                 <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
                                     <TextBlock TextWrapping="Wrap" Foreground="#92400E"
-                                               Text="Ao ligar, o Windows não pergunta o disco: ele escolhe o primeiro disco FIXO que não seja USB, APAGA esse disco (GPT + EFI/MSR/Windows) e instala. O pendrive de boot nunca é tocado. Se houver mais de um disco interno, ele usa o primeiro; se nenhum disco fixo seguro for encontrado, volta à seleção manual. ATENÇÃO: apaga o disco de destino — teste em VM antes de usar em produção."/>
+                                               Text="Ao ligar, o Windows não pergunta o disco: escolhe o primeiro disco fixo (nunca USB), apaga-o e instala. O pendrive de boot nunca é tocado. ⚠ Apaga o disco de destino — teste em VM antes de usar em produção."/>
                                 </Border>
                             </StackPanel>
                         </GroupBox>
 
                         <GroupBox Header="Primeiro boot (OOBE)">
-                            <StackPanel>
-                                <CheckBox x:Name="ChkSkipWifi" Content="Pular a tela de configuração de WiFi no primeiro boot"/>
-                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="22,4,0,0" TextWrapping="Wrap"
-                                           Text="Útil quando a máquina usa cabo de rede ou a rede é configurada depois. Atenção: no modo Entra ID o WiFi é necessário para o ingresso — só pule se for usar cabo."/>
-                            </StackPanel>
+                            <CheckBox x:Name="ChkSkipWifi" Content="Pular a tela de configuração de WiFi no primeiro boot"
+                                      ToolTip="Útil com cabo de rede. No modo Entra ID o WiFi é necessário para o ingresso — só pule se for usar cabo."/>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Sistema e usuário -->
-            <TabItem Header="Sistema e usuário">
+            <!-- ============ SISTEMA E USUÁRIO ============ -->
+            <TabItem Header="Sistema e usuário" Tag="&#xE77B;">
                 <ScrollViewer>
-                    <StackPanel Margin="4,14,12,4">
-                        <GroupBox Header="Modo de implantação (comportamento do 1º boot)">
+                    <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
+                        <GroupBox Header="Modo de implantação">
                             <StackPanel>
                                 <RadioButton x:Name="RbModeLocal" Content="Conta local — cria o usuário abaixo e faz logon automático no 1º boot (fluxo clássico)"
                                              IsChecked="True" Checked="Mode_Changed"/>
                                 <RadioButton x:Name="RbModeEntra" Margin="0,8,0,0" Checked="Mode_Changed"
-                                             Content="Entra ID — login corporativo/estudante no 1º boot (WiFi + e-mail + ingresso no Entra ID)"/>
-                                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="24,8,0,0">
+                                             Content="Entra ID — login corporativo/estudante no 1º boot (WiFi + e-mail + ingresso)"/>
+                                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="28,8,0,0">
                                     <StackPanel>
                                         <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextMuted}"
-                                                   Text="No modo Entra ID a máquina inicia mostrando a tela de conta corporativa/escola. A pessoa conecta o WiFi, entra com o e-mail e ingressa no Entra ID como usuário PADRÃO. Seus programas já vêm instalados (rodam como SYSTEM antes do login) e o usuário local abaixo é criado nos bastidores como o ÚNICO administrador."/>
+                                                   Text="No modo Entra ID a máquina inicia na tela de conta corporativa. Os programas já vêm instalados (rodam como SYSTEM antes do login) e o usuário local abaixo é o único administrador."/>
                                         <CheckBox x:Name="ChkDemoteEntra" Margin="0,10,0,0" IsChecked="True"
-                                                  Content="Remover o usuário Entra do grupo Administradores no 1º logon (deixa só o usuário local como admin)"/>
+                                                  Content="Remover o usuário Entra do grupo Administradores no 1º logon"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
                         </GroupBox>
 
-                        <GroupBox Header="Usuário local criado na instalação">
+                        <GroupBox Header="Usuário local">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="150"/>
@@ -176,7 +203,7 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Text="Edição (chave):" VerticalAlignment="Center"/>
-                                <ComboBox x:Name="CmbEdition" Grid.Column="1" Margin="0,4" SelectionChanged="CmbEdition_SelectionChanged">
+                                <ComboBox x:Name="CmbEdition" Grid.Column="1" Margin="0,4" Height="34" SelectionChanged="CmbEdition_SelectionChanged">
                                     <ComboBoxItem Content="Perguntar durante a instalação" IsSelected="True"/>
                                     <ComboBoxItem Content="Windows 11 Pro" Tag="VK7JG-NPHTM-C97JM-9MPGT-3V66T"/>
                                     <ComboBoxItem Content="Windows 11 Home" Tag="YTMG3-N6DKC-DKB77-7M9GH-8HVX7"/>
@@ -187,7 +214,7 @@
                                          ToolTip="Chave do produto (seleciona a edição; a ativação ocorre depois normalmente)"/>
 
                                 <CheckBox x:Name="ChkBypass" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0"
-                                          Content="Ignorar requisitos de hardware (TPM 2.0, Secure Boot, RAM, CPU) — recomendado para testes em VM"
+                                          Content="Ignorar requisitos de hardware (TPM 2.0, Secure Boot, RAM, CPU) — recomendado para VM"
                                           IsChecked="True"/>
                             </Grid>
                         </GroupBox>
@@ -195,46 +222,282 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- Aplicativos -->
-            <TabItem Header="Aplicativos">
+            <!-- ============ APLICATIVOS (cards + config dinâmica) ============ -->
+            <TabItem Header="Aplicativos" Tag="&#xE896;">
                 <ScrollViewer>
-                    <StackPanel Margin="4,14,12,4">
-                        <GroupBox Header="Aplicativos padrão (instalação silenciosa no primeiro logon)">
+                    <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
+                        <GroupBox Header="Escolha os programas que virão instalados">
                             <StackPanel>
-                                <WrapPanel Margin="0,0,0,10">
-                                    <Button Content="+ Office 365" Click="AddOffice_Click"/>
-                                    <Button Content="+ AnyDesk" Click="AddAnyDesk_Click"/>
-                                    <Button Content="+ 7-Zip" Click="AddSevenZip_Click"/>
-                                    <Button Content="+ FortiClient" Click="AddFortiClient_Click"/>
-                                    <Button Content="+ Adobe Reader" Click="AddAdobeReader_Click"/>
-                                    <Button Content="+ Outro..." Style="{StaticResource Secondary}" Click="AddCustomApp_Click"/>
-                                    <Button Content="Remover selecionado" Style="{StaticResource Secondary}" Margin="16,0,0,0" Click="RemoveApp_Click"/>
+                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,14" TextWrapping="Wrap"
+                                           Text="Clique nos programas que quer na imagem. O IsoForge baixa a versão mais recente sozinho e os instala em silêncio no primeiro logon. Ao selecionar, as opções de cada programa aparecem abaixo."/>
+                                <WrapPanel>
+                                    <ToggleButton x:Name="CardOffice"   Style="{StaticResource AppCard}" Content="Office 365"    Tag="&#xE8A5;" Click="CardOffice_Click"/>
+                                    <ToggleButton x:Name="CardAnyDesk"  Style="{StaticResource AppCard}" Content="AnyDesk"       Tag="&#xE703;" Click="CardAnyDesk_Click"/>
+                                    <ToggleButton x:Name="CardSevenZip" Style="{StaticResource AppCard}" Content="7-Zip"         Tag="&#xE8B7;" Click="CardSevenZip_Click"/>
+                                    <ToggleButton x:Name="CardForti"    Style="{StaticResource AppCard}" Content="FortiClient"   Tag="&#xE72E;" Click="CardForti_Click"/>
+                                    <ToggleButton x:Name="CardAdobe"    Style="{StaticResource AppCard}" Content="Adobe Reader"  Tag="&#xEA90;" Click="CardAdobe_Click"/>
+                                    <Button Content="+  Adicionar outro" Style="{StaticResource Secondary}" Width="196" Height="96" Margin="0,0,14,14" Click="AddCustomApp_Click"/>
                                 </WrapPanel>
 
-                                <DataGrid x:Name="GridApps" AutoGenerateColumns="False" CanUserAddRows="False"
-                                          HeadersVisibility="Column" MinHeight="90" MaxHeight="240" SelectionMode="Single">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Aplicativo" Binding="{Binding Name}" Width="160"/>
-                                        <DataGridTextColumn Header="Instalador (arquivo local)" Binding="{Binding InstallerPath}" Width="*"/>
-                                        <DataGridTextColumn Header="Argumentos silenciosos" Binding="{Binding SilentArgs}" Width="260"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
+                                <Border Background="#F8FAFC" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,4,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Selecionados" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8"/>
+                                        <TextBlock x:Name="EmptyAppsHint" Text="Nenhum programa selecionado ainda." Foreground="{StaticResource TextMuted}" FontSize="12.5"/>
+                                        <ItemsControl x:Name="AppsChips">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{StaticResource AccentSoft}" CornerRadius="14" Padding="12,6" Margin="0,0,8,4">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Name}" Foreground="{StaticResource Accent}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
+                                                            <Button Style="{StaticResource AppChipRemove}" Tag="{Binding}" Click="RemoveAppChip_Click"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
 
-                                <TextBlock Margin="0,8,0,0" Foreground="{StaticResource TextMuted}"
-                                           Text="Os botões acima baixam automaticamente a versão mais recente de cada app (o IsoForge já busca ao abrir). Os instaladores são copiados para a ISO (C:\Setup\Apps) e executados em silêncio no primeiro logon. O FortiClient é manual (a Fortinet não publica o instalador offline)."/>
+                        <!-- Config dinâmica: OFFICE -->
+                        <GroupBox x:Name="OfficeConfigCard" Header="Opções do Office 365" Visibility="Collapsed">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Instalação:" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="RbOfficeOnline" Style="{StaticResource Segment}" GroupName="OfficeMode"
+                                                     Content="Online (baixa no 1º logon)" IsChecked="True" Checked="OfficeMode_Changed"/>
+                                        <RadioButton x:Name="RbOfficeOffline" Style="{StaticResource Segment}" GroupName="OfficeMode"
+                                                     Content="Offline (embute na ISO ~3,5 GB)" Checked="OfficeMode_Changed"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="240"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Idioma:" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbOfficeLang" Grid.Column="1" Height="34" SelectionChanged="OfficeLang_Changed">
+                                        <ComboBoxItem Content="Português (Brasil)" Tag="pt-br" IsSelected="True"/>
+                                        <ComboBoxItem Content="English (United States)" Tag="en-us"/>
+                                        <ComboBoxItem Content="Español (España)" Tag="es-es"/>
+                                        <ComboBoxItem Content="Português (Portugal)" Tag="pt-pt"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Grid x:Name="PanelOfficeSource" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pasta offline:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtOfficeSource" Grid.Column="1" IsReadOnly="True" Margin="0,0,6,0"/>
+                                    <Button Grid.Column="2" Content="Baixar Office..." Click="DownloadOffice_Click"/>
+                                    <Button Grid.Column="3" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseOfficeSource_Click"/>
+                                </Grid>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                           Text="Online: cada máquina baixa o Office no 1º logon (ISO menor). Offline: o Office é embutido na ISO e instala sem internet."/>
+                            </StackPanel>
+                        </GroupBox>
 
-                                <Expander Header="Configuração do Office 365 (Office Deployment Tool)" Margin="0,10,0,0">
-                                    <StackPanel Margin="0,8,0,0">
-                                        <CheckBox x:Name="ChkOfficeOffline" Content="Office offline — instalar sem internet no 1º logon (embute ~3,5 GB na ISO)"
-                                                  Checked="OfficeOffline_Changed" Unchecked="OfficeOffline_Changed" Margin="0,0,0,6"/>
-                                        <DockPanel x:Name="PanelOfficeSource" IsEnabled="False" Margin="0,0,0,8">
-                                            <TextBlock Text="Pasta do Office baixado:" Width="150" VerticalAlignment="Center"/>
-                                            <Button DockPanel.Dock="Right" Content="Baixar Office..." Click="DownloadOffice_Click"/>
-                                            <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseOfficeSource_Click"/>
-                                            <TextBox x:Name="TxtOfficeSource" IsReadOnly="True" Margin="0,0,6,0"/>
+                        <!-- Config dinâmica: FORTICLIENT -->
+                        <GroupBox x:Name="FortiConfigCard" Header="Opções do FortiClient VPN" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock FontWeight="SemiBold" Text="Método recomendado — copiar de um FortiClient já configurado" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Configure os túneis uma vez no seu FortiClient e clique em 'Capturar deste PC' (traz gateway + senha cifrada, formato nativo). É o mais confiável."/>
+                                <DockPanel Margin="0,0,0,14">
+                                    <Button DockPanel.Dock="Right" Content="Capturar deste PC" Click="CaptureFortiReg_Click"
+                                            ToolTip="Exporta HKLM\SOFTWARE\Fortinet\FortiClient deste computador."/>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseFortiReg_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearFortiReg_Click"/>
+                                    <TextBox x:Name="TxtFortiReg" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+
+                                <Expander Header="Digitar os túneis manualmente (experimental)">
+                                    <StackPanel Margin="0,10,0,0">
+                                        <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                            <TextBlock TextWrapping="Wrap" Foreground="#92400E" FontSize="12"
+                                                       Text="O import por texto pode instabilizar o FortiClient em algumas versões. Prefira 'Capturar deste PC'. Marque abaixo apenas se quiser mesmo usar este método."/>
+                                        </Border>
+                                        <CheckBox x:Name="ChkVpnTextImport" Margin="0,0,0,8"
+                                                  Content="Configurar os túneis digitados via texto"/>
+                                        <DataGrid x:Name="GridVpn" AutoGenerateColumns="False" CanUserAddRows="True"
+                                                  HeadersVisibility="Column" MinHeight="80" MaxHeight="150" SelectionMode="Single"
+                                                  PreviewMouseWheel="Grid_PreviewMouseWheel">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Nome do túnel" Binding="{Binding Name}" Width="170"/>
+                                                <DataGridTextColumn Header="Gateway (IP)" Binding="{Binding RemoteGateway}" Width="170"/>
+                                                <DataGridTextColumn Header="Chave (PSK)" Binding="{Binding PresharedKey}" Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <Button Content="Remover túnel selecionado" Style="{StaticResource Secondary}" Margin="0,6,0,0" HorizontalAlignment="Left" Click="RemoveVpn_Click"/>
+                                    </StackPanel>
+                                </Expander>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <TextBlock Text="Autenticação (XAuth):" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <RadioButton x:Name="RbXauthPrompt" GroupName="Xauth" Content="Pedir no login" IsChecked="True" VerticalAlignment="Center" Checked="Xauth_Changed"/>
+                                    <RadioButton x:Name="RbXauthSave" GroupName="Xauth" Content="Salvar login" Margin="16,0,0,0" VerticalAlignment="Center" Checked="Xauth_Changed"/>
+                                    <RadioButton x:Name="RbXauthOff" GroupName="Xauth" Content="Desabilitado" Margin="16,0,0,0" VerticalAlignment="Center" Checked="Xauth_Changed"/>
+                                </StackPanel>
+                                <StackPanel x:Name="PanelXauthCreds" Orientation="Horizontal" Margin="0,8,0,0" IsEnabled="False">
+                                    <TextBlock Text="Usuário:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox x:Name="TxtXauthUser" Width="160" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Senha:" VerticalAlignment="Center" Margin="16,0,6,0"/>
+                                    <TextBox x:Name="TxtXauthPass" Width="160" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ PERSONALIZAÇÃO ============ -->
+            <TabItem Header="Personalização" Tag="&#xE790;">
+                <ScrollViewer>
+                    <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
+                        <GroupBox Header="Aparência">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Tema do Windows:" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="RbThemeDefault" Style="{StaticResource Segment}" GroupName="WinTheme"
+                                                     Content="Padrão do Windows" IsChecked="True"/>
+                                        <RadioButton x:Name="RbThemeLight" Style="{StaticResource Segment}" GroupName="WinTheme"
+                                                     Content="☀  Claro (branco)"/>
+                                        <RadioButton x:Name="RbThemeDark" Style="{StaticResource Segment}" GroupName="WinTheme"
+                                                     Content="🌙  Escuro"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
+                                           Text="Define o tema de aplicativos e do sistema no primeiro logon (e para novos usuários). 'Padrão do Windows' não altera nada."/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Papel de parede:" Width="150" VerticalAlignment="Center"/>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseWallpaper_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearWallpaper_Click"/>
+                                    <TextBox x:Name="TxtWallpaper" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Tela de bloqueio:" Width="150" VerticalAlignment="Center"/>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseLockScreen_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearLockScreen_Click"/>
+                                    <TextBox x:Name="TxtLockScreen" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Nome automático do computador por unidade">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkUnitSelection" Content="Perguntar a unidade ao instalar e nomear a máquina automaticamente"
+                                          IsChecked="False" Checked="UnitSelection_Changed" Unchecked="UnitSelection_Changed"/>
+                                <StackPanel x:Name="PanelUnit" Margin="28,10,0,0" IsEnabled="False">
+                                    <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,8"
+                                               Text="No 1º logon aparece uma tela para escolher a unidade. O nome da máquina vira: PREFIXO + número de série do equipamento."/>
+                                    <Border Background="{StaticResource AccentSoft}" CornerRadius="10" Padding="14,10" Margin="0,0,0,12">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7F4;" FontSize="16" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <TextBlock x:Name="TxtUnitPreview" Foreground="{StaticResource Accent}" FontWeight="SemiBold" FontSize="13"
+                                                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Text="Unidades (rótulo exibido → prefixo do nome):" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <DataGrid x:Name="GridUnits" AutoGenerateColumns="False" CanUserAddRows="True"
+                                              HeadersVisibility="Column" MinHeight="80" MaxHeight="150" SelectionMode="Single"
+                                              PreviewMouseWheel="Grid_PreviewMouseWheel" CellEditEnding="Units_CellEditEnding">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Unidade (exibida na tela)" Binding="{Binding Name}" Width="*"/>
+                                            <DataGridTextColumn Header="Prefixo do hostname" Binding="{Binding Prefix}" Width="220"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <Button Content="Remover unidade selecionada" Style="{StaticResource Secondary}" Margin="0,6,0,0" HorizontalAlignment="Left" Click="RemoveUnit_Click"/>
+
+                                    <Expander Header="Quando a tela aparece (avançado)" Margin="0,12,0,0">
+                                        <StackPanel Margin="0,8,0,0">
+                                            <RadioButton x:Name="RbUnitFirstLogon" IsChecked="True"
+                                                         Content="No 1º logon do usuário (recomendado — sem modo auditoria)"/>
+                                            <RadioButton x:Name="RbUnitAudit" Margin="0,6,0,0"
+                                                         Content="Antes do usuário, no modo de auditoria (reinicia para o OOBE)"/>
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <Expander Header="Scripts avançados (opcional)">
+                            <StackPanel Margin="0,10,0,0">
+                                <RadioButton x:Name="RbGeneratedUnattend" Content="Gerar autounattend.xml automaticamente (recomendado)"
+                                             IsChecked="True" Checked="UnattendMode_Changed"/>
+                                <RadioButton x:Name="RbCustomUnattend" Content="Usar meu próprio autounattend.xml:"
+                                             Margin="0,6,0,0" Checked="UnattendMode_Changed"/>
+                                <DockPanel Margin="28,4,0,0">
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseCustomUnattend_Click"/>
+                                    <TextBox x:Name="TxtCustomUnattend" IsEnabled="False" Margin="0,0,6,0"/>
+                                </DockPanel>
+                                <TextBlock Text="Script executado no 1º logon (.ps1, .cmd ou .bat):" Margin="0,12,0,4"/>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowsePostScript_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearPostScript_Click"/>
+                                    <TextBox x:Name="TxtPostScript" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ IMAGEM GOLDEN ============ -->
+            <TabItem Header="Imagem Golden" Tag="&#xE735;">
+                <ScrollViewer>
+                    <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
+                        <GroupBox Header="Imagem golden — Windows com tudo já instalado">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,12" TextWrapping="Wrap"
+                                           Text="Uma imagem golden já sobe com os aplicativos instalados — sem instalar nada nem usar internet no primeiro boot. O IsoForge instala numa VM de teste temporária os apps escolhidos na aba Aplicativos, congela e coloca dentro da ISO."/>
+
+                                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="Geração automática (recomendado)" FontWeight="SemiBold" FontSize="15" Foreground="{StaticResource TextMain}"/>
+                                        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,6,0,10" TextWrapping="Wrap"
+                                                   Text="Cria uma VM Hyper-V invisível, instala os apps, faz sysprep e captura a imagem — tudo sozinho."/>
+                                        <Border Background="White" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <TextBlock Text="Será instalado na imagem (aba Aplicativos):" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock x:Name="TxtGoldenSummary" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource Accent}" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="TxtGoldenOfficeNote" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,10" FontSize="12" TextWrapping="Wrap"
+                                                   Text="Requisitos: Hyper-V habilitado, IsoForge como Administrador, ~40 GB livres e 30–60 min."/>
+                                        <Button x:Name="BtnGoldenAuto" Style="{StaticResource Cta}" HorizontalAlignment="Left"
+                                                Content="Gerar imagem golden automaticamente" Click="GoldenAuto_Click"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Expander Header="Ou usar um install.wim já capturado">
+                                    <StackPanel Margin="0,10,0,0">
+                                        <CheckBox x:Name="ChkGolden" Content="Usar install.wim capturado (apps já pré-instalados)"
+                                                  Checked="Golden_Changed" Unchecked="Golden_Changed"/>
+                                        <DockPanel x:Name="PanelGolden" IsEnabled="False" Margin="0,8,0,0">
+                                            <TextBlock Text="install.wim:" Width="150" VerticalAlignment="Center"/>
+                                            <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseGoldenWim_Click"/>
+                                            <TextBox x:Name="TxtGoldenWim" IsReadOnly="True" Margin="0,0,6,0"/>
                                         </DockPanel>
-                                        <TextBox x:Name="TxtOfficeConfig" AcceptsReturn="True" TextWrapping="NoWrap" MinHeight="130"
-                                                 FontFamily="Consolas" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+                                        <Button Content="Salvar scripts do fluxo manual (sysprep + captura)..." Style="{StaticResource Secondary}"
+                                                HorizontalAlignment="Left" Margin="0,12,0,0" Click="SaveGoldenScripts_Click"/>
                                     </StackPanel>
                                 </Expander>
                             </StackPanel>
@@ -242,186 +505,63 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-
-            <!-- Personalização -->
-            <TabItem Header="Personalização">
-                <ScrollViewer>
-                    <StackPanel Margin="4,14,12,4">
-                        <GroupBox Header="Aparência">
-                            <StackPanel>
-                                <DockPanel Margin="0,0,0,8">
-                                    <TextBlock Text="Papel de parede padrão:" Width="150" VerticalAlignment="Center"/>
-                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseWallpaper_Click"/>
-                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearWallpaper_Click"/>
-                                    <TextBox x:Name="TxtWallpaper" IsReadOnly="True" Margin="0,0,6,0"/>
-                                </DockPanel>
-                                <DockPanel>
-                                    <TextBlock Text="Tela de bloqueio (login):" Width="150" VerticalAlignment="Center"/>
-                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseLockScreen_Click"/>
-                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearLockScreen_Click"/>
-                                    <TextBox x:Name="TxtLockScreen" IsReadOnly="True" Margin="0,0,6,0"
-                                             ToolTip="Imagem (.jpg/.png) usada como tela de bloqueio/login padrão para todos os usuários"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </GroupBox>
-
-                        <GroupBox Header="FortiClient VPN (túneis IPsec pré-configurados)">
-                            <StackPanel>
-                                <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                    <TextBlock TextWrapping="Wrap" Foreground="#92400E"
-                                               Text="Método recomendado: configure os túneis UMA vez no seu FortiClient e clique em 'Capturar deste PC' (ou aponte um .reg exportado). É o formato nativo e não corrompe o FortiClient. O import por texto (tabela abaixo) é EXPERIMENTAL — em algumas versões instabiliza o FortiClient (erro ao abrir) — e por isso vem desligado."/>
-                                </Border>
-                                <CheckBox x:Name="ChkVpnTextImport" Margin="0,0,0,8"
-                                          Content="Configurar os túneis digitados via texto (experimental — pode instabilizar o FortiClient)"/>
-                                <DataGrid x:Name="GridVpn" AutoGenerateColumns="False" CanUserAddRows="True"
-                                          HeadersVisibility="Column" MinHeight="80" MaxHeight="160" SelectionMode="Single">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Nome do túnel" Binding="{Binding Name}" Width="180"/>
-                                        <DataGridTextColumn Header="Gateway (IP)" Binding="{Binding RemoteGateway}" Width="180"/>
-                                        <DataGridTextColumn Header="Chave pré-compartilhada (PSK)" Binding="{Binding PresharedKey}" Width="*"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                                <Button Content="Remover túnel selecionado" Style="{StaticResource Secondary}" Margin="0,6,0,0" HorizontalAlignment="Left" Click="RemoveVpn_Click"/>
-
-                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                    <TextBlock Text="Autenticação (XAuth):" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                    <RadioButton x:Name="RbXauthPrompt" GroupName="Xauth" Content="Pedir no login" IsChecked="True" VerticalAlignment="Center" Checked="Xauth_Changed"/>
-                                    <RadioButton x:Name="RbXauthSave" GroupName="Xauth" Content="Salvar login" Margin="16,0,0,0" VerticalAlignment="Center" Checked="Xauth_Changed"/>
-                                    <RadioButton x:Name="RbXauthOff" GroupName="Xauth" Content="Desabilitado" Margin="16,0,0,0" VerticalAlignment="Center" Checked="Xauth_Changed"/>
-                                </StackPanel>
-                                <StackPanel x:Name="PanelXauthCreds" Orientation="Horizontal" Margin="0,6,0,0" IsEnabled="False">
-                                    <TextBlock Text="Usuário:" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                    <TextBox x:Name="TxtXauthUser" Width="160" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Senha:" VerticalAlignment="Center" Margin="16,0,6,0"/>
-                                    <TextBox x:Name="TxtXauthPass" Width="160" VerticalAlignment="Center"/>
-                                    <TextBlock Text="(usado só no modo Salvar login)" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center" Margin="10,0,0,0"/>
-                                </StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                           Text="Pedir no login (padrão): o FortiClient pede usuário e senha ao conectar a VPN. Salvar login: grava usuário/senha na configuração. Desabilitado: sem autenticação de usuário."/>
-                                <TextBlock Text="Método confiável — config de um FortiClient já ajustado (traz gateway + PSK cifrada):"
-                                           Margin="0,12,0,4" FontWeight="SemiBold"/>
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="Capturar deste PC" Click="CaptureFortiReg_Click"
-                                            ToolTip="Exporta a configuração do FortiClient instalado NESTE computador (HKLM\SOFTWARE\Fortinet\FortiClient). Configure os túneis aqui uma vez antes de clicar."/>
-                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseFortiReg_Click"/>
-                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearFortiReg_Click"/>
-                                    <TextBox x:Name="TxtFortiReg" IsReadOnly="True" Margin="0,0,6,0"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </GroupBox>
-
-                        <GroupBox Header="Seleção de unidade (define o nome do computador)">
-                            <StackPanel>
-                                <CheckBox x:Name="ChkUnitSelection" Content="Ativar tela de seleção de unidade"
-                                          IsChecked="False" Checked="UnitSelection_Changed" Unchecked="UnitSelection_Changed"/>
-                                <StackPanel x:Name="PanelUnitMethod" Margin="22,6,0,0">
-                                    <RadioButton x:Name="RbUnitFirstLogon" IsChecked="True"
-                                                 Content="No primeiro logon do usuário (recomendado — sem auditoria)"/>
-                                    <RadioButton x:Name="RbUnitAudit" Margin="0,4,0,0"
-                                                 Content="Antes do usuário, no modo de auditoria (reinicia para o OOBE)"/>
-                                </StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,8,0,8"
-                                           Text="A tela cheia aparece para escolher a unidade; o nome da máquina vira PREFIXO + número de série do BIOS. No 1º logon (recomendado): a tela aparece ao logar, a máquina é renomeada e reinicia uma vez no fim — sem modo de auditoria. No modo de auditoria: acontece antes do usuário existir e adiciona um reboot extra. No modo Entra ID a seleção também funciona (roda no 1º logon do usuário; o novo nome é sincronizado com o Entra após o reboot); o modo de auditoria fica indisponível."/>
-                                <DataGrid x:Name="GridUnits" AutoGenerateColumns="False" CanUserAddRows="True"
-                                          HeadersVisibility="Column" MinHeight="80" MaxHeight="160" SelectionMode="Single" IsEnabled="True">
-                                    <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Unidade (exibida na tela)" Binding="{Binding Name}" Width="*"/>
-                                        <DataGridTextColumn Header="Prefixo do hostname" Binding="{Binding Prefix}" Width="220"/>
-                                    </DataGrid.Columns>
-                                </DataGrid>
-                                <Button Content="Remover unidade selecionada" Style="{StaticResource Secondary}" Margin="0,6,0,0" HorizontalAlignment="Left" Click="RemoveUnit_Click"/>
-                            </StackPanel>
-                        </GroupBox>
-
-                        <GroupBox Header="Scripts">
-                            <StackPanel>
-                                <RadioButton x:Name="RbGeneratedUnattend" Content="Gerar autounattend.xml automaticamente com as opções acima (recomendado)"
-                                             IsChecked="True" Checked="UnattendMode_Changed"/>
-                                <RadioButton x:Name="RbCustomUnattend" Content="Usar meu próprio autounattend.xml (usuário/sistema serão ignorados):"
-                                             Margin="0,6,0,0" Checked="UnattendMode_Changed"/>
-                                <DockPanel Margin="22,4,0,0">
-                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseCustomUnattend_Click"/>
-                                    <TextBox x:Name="TxtCustomUnattend" IsEnabled="False" Margin="0,0,6,0"/>
-                                </DockPanel>
-                                <TextBlock Text="Script adicional executado no primeiro logon (.ps1, .cmd ou .bat) — opcional:" Margin="0,12,0,4"/>
-                                <DockPanel>
-                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowsePostScript_Click"/>
-                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearPostScript_Click"/>
-                                    <TextBox x:Name="TxtPostScript" IsReadOnly="True" Margin="0,0,6,0"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </GroupBox>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
-
-            <!-- Imagem Golden -->
-            <TabItem Header="Imagem Golden">
-                <ScrollViewer>
-                    <StackPanel Margin="4,14,12,4">
-                        <GroupBox Header="Imagem golden — Windows com tudo já instalado">
-                            <StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,12" TextWrapping="Wrap"
-                                           Text="Uma imagem golden é um Windows que já sobe com os aplicativos instalados — sem instalar nada nem usar internet no primeiro boot. O IsoForge instala numa máquina de teste temporária exatamente os apps que você escolheu na aba Aplicativos, congela essa instalação e a coloca dentro da ISO."/>
-
-                                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
-                                    <StackPanel>
-                                        <TextBlock Text="Geração automática (recomendado)" FontWeight="SemiBold" FontSize="15" Foreground="{StaticResource TextMain}"/>
-                                        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,6,0,10" TextWrapping="Wrap"
-                                                   Text="Ao clicar, o IsoForge cria uma VM Hyper-V invisível, instala nela os apps abaixo, faz sysprep e captura a imagem — tudo sozinho. Você não precisa tocar em nenhuma máquina."/>
-
-                                        <Border Background="White" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                            <StackPanel>
-                                                <TextBlock Text="Será instalado na imagem (definido na aba Aplicativos):" FontWeight="SemiBold" FontSize="12"/>
-                                                <TextBlock x:Name="TxtGoldenSummary" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource Accent}" FontWeight="SemiBold"/>
-                                                <TextBlock x:Name="TxtGoldenOfficeNote" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextMuted}"/>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,10" FontSize="12" TextWrapping="Wrap"
-                                                   Text="Requisitos: Hyper-V habilitado, IsoForge como Administrador, ~40 GB livres e 30–60 min. A VM usa a rede padrão do Hyper-V para o Office online; para não depender de internet, marque 'Office offline' na aba Aplicativos."/>
-                                        <Button x:Name="BtnGoldenAuto" Style="{StaticResource Cta}" HorizontalAlignment="Left"
-                                                Content="⚙  Gerar imagem golden automaticamente" Click="GoldenAuto_Click"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <TextBlock Text="Ou use um install.wim já capturado" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                                <CheckBox x:Name="ChkGolden" Content="Usar install.wim capturado (apps já pré-instalados)"
-                                          Checked="Golden_Changed" Unchecked="Golden_Changed"/>
-                                <DockPanel x:Name="PanelGolden" IsEnabled="False" Margin="0,8,0,0">
-                                    <TextBlock Text="install.wim capturado:" Width="150" VerticalAlignment="Center"/>
-                                    <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseGoldenWim_Click"/>
-                                    <TextBox x:Name="TxtGoldenWim" IsReadOnly="True" Margin="0,0,6,0"/>
-                                </DockPanel>
-
-                                <Button Content="Salvar scripts do fluxo manual (sysprep + captura)..." Style="{StaticResource Secondary}"
-                                        HorizontalAlignment="Left" Margin="0,12,0,0" Click="SaveGoldenScripts_Click"/>
-                            </StackPanel>
-                        </GroupBox>
-                    </StackPanel>
-                </ScrollViewer>
-            </TabItem>
         </TabControl>
 
-        <!-- Rodapé de ações -->
-        <Border Grid.Row="2" Background="{StaticResource CardBg}" BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,1" Padding="16,12">
+        <!-- ============ RODAPÉ: ações + status/downloads ============ -->
+        <Border Grid.Column="1" Grid.Row="2" Background="{StaticResource CardBg}"
+                BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,0" Padding="24,14">
             <StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Button x:Name="BtnBuild" Style="{StaticResource Cta}" Content="Gerar ISO personalizada" Click="Build_Click"/>
-                    <Button x:Name="BtnSandbox" Style="{StaticResource Secondary}" Content="Testar instalação (Sandbox)" Padding="14,12" Click="TestSandbox_Click"
-                            ToolTip="Instala os apps numa cópia descartável do Windows (Windows Sandbox), igual à VM — sem risco para esta máquina."/>
-                    <Button x:Name="BtnDryRun" Style="{StaticResource Secondary}" Content="Somente gerar arquivos (testar sem ISO)" Padding="14,12" Click="DryRun_Click"/>
-                    <Button x:Name="BtnTestScript" Style="{StaticResource Secondary}" Content="Salvar script de teste (Hyper-V)" Padding="14,12" Click="SaveTestScript_Click"/>
-                </StackPanel>
-                <ProgressBar x:Name="BuildProgress" Height="8" Margin="0,12,0,0" Minimum="0" Maximum="100"
-                             Visibility="Collapsed" Foreground="#2563EB"/>
+                <DockPanel>
+                    <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="10" Padding="14,8" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse x:Name="StatusDot" Width="9" Height="9" Fill="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,9,0">
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.25" Duration="0:0:0.9"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+                            <TextBlock x:Name="TxtHeaderStatus" Foreground="#475569" FontSize="12.5" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap" Text="Pronto"
+                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                            <ProgressBar x:Name="DownloadBar" Width="130" Height="8" Margin="12,0,0,0"
+                                         Minimum="0" Maximum="100" Visibility="Collapsed" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BtnBuild" Style="{StaticResource Cta}" Content="Gerar ISO personalizada" Click="Build_Click"/>
+                        <Button x:Name="BtnSandbox" Style="{StaticResource Secondary}" Content="Testar (Sandbox)" Padding="14,12" Click="TestSandbox_Click"
+                                ToolTip="Instala os apps numa cópia descartável do Windows (Windows Sandbox), igual à VM."/>
+                        <Button x:Name="BtnDryRun" Style="{StaticResource Secondary}" Content="Somente gerar arquivos" Padding="14,12" Click="DryRun_Click"
+                                ToolTip="Gera o autounattend.xml e a pasta Setup para inspeção, sem criar a ISO."/>
+                        <Button x:Name="BtnTestScript" Style="{StaticResource Secondary}" Content="Script Hyper-V" Padding="14,12" Click="SaveTestScript_Click"
+                                ToolTip="Salva um script que cria uma VM e dá boot na ISO gerada."/>
+                    </StackPanel>
+                </DockPanel>
+                <Grid x:Name="BuildProgressPanel" Margin="0,12,0,0" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar x:Name="BuildProgress" Height="10" Minimum="0" Maximum="100"/>
+                    <TextBlock Grid.Column="1" Margin="12,0,0,0" FontWeight="SemiBold" FontSize="12.5" Foreground="{StaticResource Accent}"
+                               Text="{Binding Value, ElementName=BuildProgress, StringFormat={}{0:0}%}"/>
+                </Grid>
             </StackPanel>
         </Border>
 
-        <!-- Log -->
-        <Border Grid.Row="3" Background="#0B1220" Margin="16,10,16,14" CornerRadius="10">
-            <DockPanel Margin="12,8">
-                <TextBlock DockPanel.Dock="Top" Text="LOG" Foreground="#64748B" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,4"/>
+        <!-- ============ LOG ============ -->
+        <Border Grid.Column="1" Grid.Row="3" Background="#0B1220" Margin="24,12,24,14" CornerRadius="12">
+            <DockPanel Margin="14,9">
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="2,0,0,5">
+                    <Border Width="7" Height="7" CornerRadius="4" Background="#22C55E" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock Text="ATIVIDADE" Foreground="#64748B" FontSize="10.5" FontWeight="SemiBold" LineHeight="10"/>
+                </StackPanel>
                 <TextBox x:Name="TxtLog" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                          TextWrapping="NoWrap" Background="Transparent" Foreground="#D1D5DB" BorderThickness="0"/>

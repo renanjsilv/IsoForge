@@ -2,6 +2,9 @@ using System.Collections.Concurrent;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
 using IsoForge.Core;
 using IsoForge.Models;
 using Microsoft.Win32;
@@ -14,29 +17,30 @@ public partial class MainWindow : Window
     readonly InstallerFetcher _fetcher = new();
     readonly ConcurrentDictionary<AppId, FetchResult> _fetched = new();
     CancellationTokenSource? _cts;
+    bool _syncingCards;
 
     public MainWindow()
     {
         InitializeComponent();
+        RunVersion.Text = $"v{Updater.CurrentVersion.ToString(3)}";
 
-        // Carrega a configuração salva localmente (%APPDATA%\IsoForge\settings.json), se houver.
-        // Assim os dados preenchidos sobrevivem a atualizações e nada sensível fica no código.
+        // Carrega a configuração salva localmente. Assim os dados preenchidos sobrevivem a
+        // atualizações e nada sensível fica no código.
         _config = SettingsStore.Load() ?? _config;
 
-        GridApps.ItemsSource = _config.Apps;
         GridVpn.ItemsSource = _config.VpnTunnels;
         GridUnits.ItemsSource = _config.Units;
-        TxtOfficeConfig.Text = string.IsNullOrWhiteSpace(_config.OfficeConfigXml)
-            ? BuildConfig.DefaultOfficeConfig : _config.OfficeConfigXml;
 
         ApplyConfigToUi();
         RefreshProfiles();
+        RefreshAppCards();
+        UpdateUnitPreview();
 
-        // Salva ao fechar (CollectConfig já persiste) — garante que nada preenchido se perca.
+        // Salva ao fechar — garante que nada preenchido se perca.
         Closing += (_, __) => { try { CollectConfig(); } catch { } };
 
-        // Resumo da imagem golden reflete os apps escolhidos
-        _config.Apps.CollectionChanged += (_, __) => Dispatcher.Invoke(UpdateGoldenSummary);
+        // Reflete os apps escolhidos em outras telas.
+        _config.Apps.CollectionChanged += (_, __) => Dispatcher.Invoke(() => { UpdateGoldenSummary(); UpdateDynamicConfigCards(); });
         UpdateGoldenSummary();
 
         var bundled = Oscdimg.ExtractBundled();
@@ -62,40 +66,44 @@ public partial class MainWindow : Window
         AppendLog("");
         StartInstallerRefresh();
 
-        if (Environment.GetCommandLineArgs().Any(a => a.Equals("--updated", StringComparison.OrdinalIgnoreCase)))
+        _ = CheckForUpdateAsync();
+    }
+
+    // Abre a página do projeto no GitHub no navegador padrão.
+    void Github_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+    {
+        try
         {
-            // Reaberto pelo instalador após um auto-update silencioso.
-            var v = Updater.CurrentVersion.ToString(3);
-            TxtHeaderStatus.Text = $"✔ Atualizado com sucesso para a versão {v}";
-            AppendLog($"✔ Atualizado com sucesso para a versão {v}.");
-            Loaded += (_, __) => MessageBox.Show(this,
-                $"Atualizado com sucesso para a versão {v}!", "IsoForge",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
         }
-        else
-        {
-            _ = CheckForUpdateAsync();
-        }
+        catch { }
+        e.Handled = true;
     }
 
     // ------------------------------------------------------------------
-    // Auto-atualização: checa o último release no GitHub ao abrir.
+    // Auto-atualização
     // ------------------------------------------------------------------
     async Task CheckForUpdateAsync()
     {
         try
         {
             var info = await Updater.CheckAsync();
-            if (info == null || Updater.IsSkipped(info.Version)) return; // atualizado / pulado / sem internet
+            if (info == null || Updater.IsSkipped(info.Version)) return;
 
             var dlg = new UpdateWindow(info.Version, Updater.CurrentVersion, info.Notes) { Owner = this };
             dlg.ShowDialog();
             if (dlg.Choice == UpdateChoice.Skip) { Updater.SkipVersion(info.Version); return; }
-            if (dlg.Choice != UpdateChoice.Update) return; // "Depois"
+            if (dlg.Choice != UpdateChoice.Update) return;
 
-            var pct = new Progress<double>(p => Dispatcher.Invoke(() => TxtHeaderStatus.Text = $"Baixando atualização: {p:0}%"));
+            var pct = new Progress<double>(p => Dispatcher.Invoke(() =>
+            {
+                TxtHeaderStatus.Text = $"Baixando atualização: {p:0}%";
+                DownloadBar.Visibility = Visibility.Visible;
+                DownloadBar.IsIndeterminate = false;
+                DownloadBar.Value = p;
+            }));
             var path = await Updater.DownloadAsync(info, pct);
-            CollectConfig(); // salva a config antes de sair
+            CollectConfig();
             Updater.RunInstaller(path);
         }
         catch (Exception ex)
@@ -110,10 +118,11 @@ public partial class MainWindow : Window
     void StartInstallerRefresh()
     {
         TxtHeaderStatus.Text = "Buscando instaladores mais recentes...";
+        DownloadBar.Visibility = Visibility.Visible;
+        DownloadBar.IsIndeterminate = true;
         var progress = new Progress<string>(AppendLog);
         _ = Task.Run(async () =>
         {
-            // Apps leves ao abrir; o Adobe (~700 MB) é baixado sob demanda ao adicioná-lo.
             var ids = new[] { AppId.SevenZip, AppId.AnyDesk, AppId.OfficeOdt };
             foreach (var id in ids)
             {
@@ -121,15 +130,123 @@ public partial class MainWindow : Window
                 if (r.LocalPath != null) _fetched[id] = r;
             }
             var resumo = string.Join(" · ", _fetched.Values.Select(v => v.Version == "mais recente" ? v.Name : $"{v.Name} {v.Version}"));
-            Dispatcher.Invoke(() => TxtHeaderStatus.Text = string.IsNullOrEmpty(resumo) ? "Instaladores: verifique a conexão" : $"Instaladores prontos: {resumo}");
+            Dispatcher.Invoke(() =>
+            {
+                TxtHeaderStatus.Text = string.IsNullOrEmpty(resumo) ? "Instaladores: verifique a conexão" : $"Instaladores prontos: {resumo}";
+                HideDownloadBar();
+            });
         });
     }
 
-    // Progresso em porcentagem mostrado no cabeçalho (atualiza no lugar, sem poluir o log).
+    // Progresso em porcentagem no painel de status (texto + barra bem visíveis).
     IProgress<double> PercentTo(string label) =>
-        new Progress<double>(pct => TxtHeaderStatus.Text = $"{label}: {pct:0}%");
+        new Progress<double>(pct =>
+        {
+            TxtHeaderStatus.Text = $"{label}: {pct:0}%";
+            DownloadBar.Visibility = Visibility.Visible;
+            DownloadBar.IsIndeterminate = false;
+            DownloadBar.Value = pct;
+            if (pct >= 99.5) HideDownloadBar();
+        });
 
-    async Task AddAutoAsync(AppId id)
+    void HideDownloadBar()
+    {
+        DownloadBar.IsIndeterminate = false;
+        DownloadBar.Visibility = Visibility.Collapsed;
+    }
+
+    // ------------------------------------------------------------------
+    // Aplicativos: cards selecionáveis + config dinâmica
+    // ------------------------------------------------------------------
+    void RefreshAppCards()
+    {
+        _syncingCards = true;
+        CardOffice.IsChecked = _config.Apps.Any(a => a.Kind == AppKind.Office);
+        CardAnyDesk.IsChecked = _config.Apps.Any(a => a.Name == "AnyDesk");
+        CardSevenZip.IsChecked = _config.Apps.Any(a => a.Name == "7-Zip");
+        CardForti.IsChecked = _config.Apps.Any(a => a.Name == "FortiClient");
+        CardAdobe.IsChecked = _config.Apps.Any(a => a.Name == "Adobe Acrobat Reader");
+        _syncingCards = false;
+        AppsChips.ItemsSource = _config.Apps;
+        UpdateDynamicConfigCards();
+    }
+
+    void UpdateDynamicConfigCards()
+    {
+        if (OfficeConfigCard == null) return;
+        bool office = _config.Apps.Any(a => a.Kind == AppKind.Office);
+        bool forti = _config.Apps.Any(a => a.Name == "FortiClient");
+        OfficeConfigCard.Visibility = office ? Visibility.Visible : Visibility.Collapsed;
+        FortiConfigCard.Visibility = forti ? Visibility.Visible : Visibility.Collapsed;
+        EmptyAppsHint.Visibility = _config.Apps.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    async void CardOffice_Click(object sender, RoutedEventArgs e)
+    {
+        if (_syncingCards) return;
+        if (CardOffice.IsChecked == true)
+        {
+            var ok = await AddOfficeAsync();
+            if (!ok) { _syncingCards = true; CardOffice.IsChecked = false; _syncingCards = false; }
+        }
+        else
+        {
+            var app = _config.Apps.FirstOrDefault(a => a.Kind == AppKind.Office);
+            if (app != null) _config.Apps.Remove(app);
+        }
+        UpdateDynamicConfigCards();
+    }
+
+    async void CardAnyDesk_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardAnyDesk, AppId.AnyDesk, "AnyDesk");
+    async void CardSevenZip_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardSevenZip, AppId.SevenZip, "7-Zip");
+    async void CardAdobe_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardAdobe, AppId.AdobeReader, "Adobe Acrobat Reader");
+    async void CardForti_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardForti, AppId.FortiClient, "FortiClient");
+
+    async Task ToggleAppCard(ToggleButton card, AppId id, string name)
+    {
+        if (_syncingCards) return;
+        if (card.IsChecked == true)
+        {
+            var ok = await AddAutoAsync(id);
+            if (!ok) { _syncingCards = true; card.IsChecked = false; _syncingCards = false; }
+        }
+        else
+        {
+            var app = _config.Apps.FirstOrDefault(a => a.Name == name);
+            if (app != null) _config.Apps.Remove(app);
+        }
+        UpdateDynamicConfigCards();
+    }
+
+    async Task<bool> AddOfficeAsync()
+    {
+        if (_config.Apps.Any(a => a.Kind == AppKind.Office)) return true;
+        SetBusy(true);
+        var progress = new Progress<string>(AppendLog);
+        var percent = PercentTo("Baixando Office Deployment Tool");
+        try
+        {
+            var odt = await _fetcher.EnsureAsync(AppId.OfficeOdt, progress, CancellationToken.None, percent);
+            if (odt.LocalPath == null || !File.Exists(odt.LocalPath))
+            {
+                MessageBox.Show(this, "Não consegui obter o Office Deployment Tool. Verifique a internet.", "IsoForge",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return false;
+            }
+            _fetched[AppId.OfficeOdt] = odt;
+            _config.Apps.Add(new AppEntry { Name = odt.Name, InstallerPath = odt.LocalPath, SilentArgs = "", Kind = AppKind.Office });
+            _config.OfficeOffline = false;
+            _syncingCards = true;
+            RbOfficeOnline.IsChecked = true;
+            _syncingCards = false;
+            AppendLog("Office 365 adicionado (online por padrão). Escolha Online/Offline e o idioma nas opções abaixo.");
+            return true;
+        }
+        catch (Exception ex) { AppendLog($"ERRO: {ex.Message}"); return false; }
+        finally { SetBusy(false); }
+    }
+
+    async Task<bool> AddAutoAsync(AppId id)
     {
         var known = _fetched.TryGetValue(id, out var cached) ? cached : null;
         if (known == null)
@@ -145,15 +262,11 @@ public partial class MainWindow : Window
 
         if (known?.LocalPath == null || !File.Exists(known.LocalPath))
         {
-            MessageBox.Show(this, $"Não consegui baixar o instalador de {id} automaticamente. Verifique a internet e tente novamente, ou use \"+ Outro...\".",
+            MessageBox.Show(this, "Não consegui baixar o instalador automaticamente. Verifique a internet e tente novamente, ou use \"+ Adicionar outro\".",
                 "IsoForge", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            return false;
         }
-        if (_config.Apps.Any(a => a.Name == known.Name))
-        {
-            MessageBox.Show(this, $"\"{known.Name}\" já está na lista.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
+        if (_config.Apps.Any(a => a.Name == known.Name)) return true;
         _config.Apps.Add(new AppEntry
         {
             Name = known.Name,
@@ -161,7 +274,56 @@ public partial class MainWindow : Window
             SilentArgs = known.SilentArgs,
             Kind = known.IsOffice ? AppKind.Office : AppKind.Generic
         });
-        AppendLog($"{known.Name} adicionado (versão {known.Version}): {known.LocalPath}");
+        AppendLog($"{known.Name} adicionado (versão {known.Version}).");
+        return true;
+    }
+
+    void RemoveAppChip_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is AppEntry app)
+        {
+            _config.Apps.Remove(app);
+            RefreshAppCards();
+        }
+    }
+
+    void AddCustomApp_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "Instaladores|*.exe;*.msi|Todos os arquivos|*.*",
+            Title = "Selecione o instalador do aplicativo"
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var isMsi = Path.GetExtension(dlg.FileName).Equals(".msi", StringComparison.OrdinalIgnoreCase);
+        _config.Apps.Add(new AppEntry
+        {
+            Name = Path.GetFileNameWithoutExtension(dlg.FileName),
+            InstallerPath = dlg.FileName,
+            SilentArgs = isMsi ? "/qn /norestart" : "/S",
+            Kind = AppKind.Generic
+        });
+    }
+
+    // Config dinâmica do Office
+    void OfficeMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (PanelOfficeSource == null || RbOfficeOffline == null) return;
+        bool offline = RbOfficeOffline.IsChecked == true;
+        _config.OfficeOffline = offline;
+        PanelOfficeSource.Visibility = offline ? Visibility.Visible : Visibility.Collapsed;
+        UpdateGoldenSummary();
+        if (offline && string.IsNullOrWhiteSpace(TxtOfficeSource.Text))
+            AppendLog("Office offline selecionado. Clique em 'Baixar Office...' para embutir o Office na ISO (~3,5 GB).");
+    }
+
+    void OfficeLang_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbOfficeLang?.SelectedItem is not ComboBoxItem it) return;
+        var lang = (it.Tag as string) ?? "pt-br";
+        _config.OfficeLanguage = lang;
+        _config.OfficeConfigXml = BuildConfig.BuildOfficeConfig(lang);
     }
 
     // ------------------------------------------------------------------
@@ -245,7 +407,7 @@ public partial class MainWindow : Window
 
     void Xauth_Changed(object sender, RoutedEventArgs e)
     {
-        if (PanelXauthCreds == null) return; // durante InitializeComponent
+        if (PanelXauthCreds == null) return;
         PanelXauthCreds.IsEnabled = RbXauthSave.IsChecked == true;
     }
 
@@ -288,16 +450,10 @@ public partial class MainWindow : Window
         }
     }
 
-    void OfficeOffline_Changed(object sender, RoutedEventArgs e)
-    {
-        if (PanelOfficeSource == null) return;
-        PanelOfficeSource.IsEnabled = ChkOfficeOffline.IsChecked == true;
-        UpdateGoldenSummary();
-    }
-
     void UpdateGoldenSummary()
     {
         if (TxtGoldenSummary == null) return;
+        bool offline = RbOfficeOffline?.IsChecked == true;
         var hasOffice = _config.Apps.Any(a => a.Kind == AppKind.Office);
         if (_config.Apps.Count == 0)
         {
@@ -306,14 +462,14 @@ public partial class MainWindow : Window
             return;
         }
         var names = _config.Apps.Select(a => a.Kind == AppKind.Office
-            ? $"Office 365 ({(ChkOfficeOffline.IsChecked == true ? "offline" : "online")})"
+            ? $"Office 365 ({(offline ? "offline" : "online")})"
             : a.Name);
         TxtGoldenSummary.Text = "• " + string.Join("   • ", names);
 
         TxtGoldenOfficeNote.Text = hasOffice
-            ? (ChkOfficeOffline.IsChecked == true
+            ? (offline
                 ? "Office: será instalado a partir da fonte offline embutida (sem internet na VM)."
-                : "Office: a VM baixará o Office da internet durante a geração. Marque 'Office offline' na aba Aplicativos para evitar isso.")
+                : "Office: a VM baixará o Office da internet durante a geração. Marque 'Offline' nas opções do Office para evitar isso.")
             : "";
     }
 
@@ -329,15 +485,14 @@ public partial class MainWindow : Window
         var odt = office?.InstallerPath;
         if (string.IsNullOrWhiteSpace(odt) || !File.Exists(odt))
         {
-            MessageBox.Show(this, "Adicione o Office na seção 4 primeiro (o setup.exe do ODT).", "IsoForge",
+            MessageBox.Show(this, "Selecione o Office 365 nos cards primeiro.", "IsoForge",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var dlg = new OpenFolderDialog { Title = "Escolha onde baixar o Office (a pasta receberá setup.exe + Office\\Data)" };
         if (dlg.ShowDialog() != true) return;
 
-        // Ler propriedades da UI ANTES do Task.Run (evita acesso cross-thread).
-        var cfgXml = TxtOfficeConfig.Text;
+        var cfgXml = _config.OfficeConfigXml;
         var folder = dlg.FolderName;
         SetBusy(true);
         var progress = new Progress<string>(AppendLog);
@@ -348,7 +503,7 @@ public partial class MainWindow : Window
             await Task.Run(() => OfficeDownloader.DownloadAsync(odt, cfgXml, folder, progress, CancellationToken.None, headline));
             TxtHeaderStatus.Text = "Office offline pronto";
             TxtOfficeSource.Text = folder;
-            ChkOfficeOffline.IsChecked = true;
+            RbOfficeOffline.IsChecked = true;
             MessageBox.Show(this, "Office baixado. O modo offline foi ativado.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -400,7 +555,7 @@ public partial class MainWindow : Window
             string.IsNullOrWhiteSpace(cfg.OscdimgPath) || !File.Exists(cfg.OscdimgPath) ||
             string.IsNullOrWhiteSpace(cfg.UserName))
         {
-            MessageBox.Show(this, "Antes de gerar a imagem golden, preencha: ISO de origem, ISO de saída, oscdimg e o usuário local (seção 2).",
+            MessageBox.Show(this, "Antes de gerar a imagem golden, preencha: ISO de origem, ISO de saída, oscdimg e o usuário local (aba Sistema e usuário).",
                 "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -429,25 +584,36 @@ public partial class MainWindow : Window
         finally { SetBusy(false); }
     }
 
+    // ------------------------------------------------------------------
+    // Seleção de unidade
+    // ------------------------------------------------------------------
     void UnitSelection_Changed(object sender, RoutedEventArgs e)
     {
-        if (GridUnits == null) return;
-        GridUnits.IsEnabled = ChkUnitSelection.IsChecked == true;
-        if (PanelUnitMethod != null) PanelUnitMethod.IsEnabled = ChkUnitSelection.IsChecked == true;
+        if (PanelUnit == null) return;
+        PanelUnit.IsEnabled = ChkUnitSelection.IsChecked == true;
+        UpdateUnitPreview();
+    }
+
+    void Units_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        => Dispatcher.BeginInvoke(new Action(UpdateUnitPreview));
+
+    void UpdateUnitPreview()
+    {
+        if (TxtUnitPreview == null) return;
+        var first = _config.Units.FirstOrDefault(u => !string.IsNullOrWhiteSpace(u.Prefix));
+        var label = string.IsNullOrWhiteSpace(first?.Name) ? "Matriz" : first!.Name;
+        var prefix = string.IsNullOrWhiteSpace(first?.Prefix) ? "MTZ" : first!.Prefix;
+        TxtUnitPreview.Text = $"Escolhendo \"{label}\", a máquina se chamará {prefix}-XXXX (o final vem do nº de série do equipamento).";
     }
 
     void Mode_Changed(object sender, RoutedEventArgs e)
     {
-        // Checked dispara durante o InitializeComponent, antes dos controles abaixo existirem.
         if (ChkAutoLogon == null || ChkUnitSelection == null) return;
         bool entra = RbModeEntra.IsChecked == true;
 
-        // Logon automático não se aplica ao modo Entra ID (não há autologon local).
         ChkAutoLogon.IsEnabled = !entra;
         if (ChkDemoteEntra != null) ChkDemoteEntra.IsEnabled = entra;
 
-        // Seleção de unidade funciona nos dois modos. No Entra ID, porém, o modo de auditoria
-        // não se aplica (o nome é aplicado por tarefa no 1º logon): força "1º logon".
         if (RbUnitAudit != null && RbUnitFirstLogon != null)
         {
             RbUnitAudit.IsEnabled = !entra;
@@ -458,11 +624,12 @@ public partial class MainWindow : Window
     void RemoveUnit_Click(object sender, RoutedEventArgs e)
     {
         if (GridUnits.SelectedItem is UnitEntry u) _config.Units.Remove(u);
+        UpdateUnitPreview();
     }
 
     void UnattendMode_Changed(object sender, RoutedEventArgs e)
     {
-        if (TxtCustomUnattend == null) return; // durante InitializeComponent
+        if (TxtCustomUnattend == null) return;
         TxtCustomUnattend.IsEnabled = RbCustomUnattend.IsChecked == true;
     }
 
@@ -482,121 +649,15 @@ public partial class MainWindow : Window
         }
     }
 
-    // ------------------------------------------------------------------
-    // Aplicativos
-    // ------------------------------------------------------------------
-    async void AddOffice_Click(object sender, RoutedEventArgs e)
+    // Rola a página quando o mouse está sobre um DataGrid (que normalmente engole a roda).
+    void Grid_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (_config.Apps.Any(a => a.Kind == AppKind.Office))
-        {
-            MessageBox.Show(this, "O Office 365 já está na lista.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var choice = new OfficeChoiceWindow { Owner = this };
-        if (choice.ShowDialog() != true) return;
-
-        SetBusy(true);
-        var progress = new Progress<string>(AppendLog);
-        try
-        {
-            // Garante o Office Deployment Tool (setup.exe) baixado.
-            var odt = await _fetcher.EnsureAsync(AppId.OfficeOdt, progress, CancellationToken.None);
-            if (odt.LocalPath == null || !File.Exists(odt.LocalPath))
-            {
-                MessageBox.Show(this, "Não consegui obter o Office Deployment Tool. Verifique a internet.", "IsoForge",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
-                return;
-            }
-            _fetched[AppId.OfficeOdt] = odt;
-
-            if (choice.Choice == OfficeChoice.Offline)
-            {
-                // Baixa a fonte offline para a pasta padrão do programa (temporária até gerar a ISO).
-                var target = Path.Combine(_fetcher.BaseFolder, "OfficeData");
-                var cfgXml = TxtOfficeConfig.Text; // ler na thread da UI
-                var headline = new Progress<string>(s => TxtHeaderStatus.Text = $"Baixando Office offline: {s}");
-                AppendLog("==== Baixando Office offline (~3,5 GB) ====");
-                await Task.Run(() => OfficeDownloader.DownloadAsync(odt.LocalPath, cfgXml, target, progress, CancellationToken.None, headline));
-                TxtHeaderStatus.Text = "Office offline pronto";
-                _config.OfficeOffline = true;
-                _config.OfficeSourceFolder = target;
-                ChkOfficeOffline.IsChecked = true;
-                TxtOfficeSource.Text = target;
-                AppendLog($"Office offline pronto em: {target}");
-            }
-            else
-            {
-                _config.OfficeOffline = false;
-                ChkOfficeOffline.IsChecked = false;
-                AppendLog("Office 365 no modo online: cada máquina baixará o Office no primeiro logon.");
-            }
-
-            _config.Apps.Add(new AppEntry { Name = odt.Name, InstallerPath = odt.LocalPath, SilentArgs = "", Kind = AppKind.Office });
-            UpdateGoldenSummary();
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"ERRO: {ex.Message}");
-            MessageBox.Show(this, ex.Message, "IsoForge — erro", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally { SetBusy(false); }
-    }
-
-    async void AddAnyDesk_Click(object sender, RoutedEventArgs e) => await AddAutoAsync(AppId.AnyDesk);
-    async void AddSevenZip_Click(object sender, RoutedEventArgs e) => await AddAutoAsync(AppId.SevenZip);
-    async void AddAdobeReader_Click(object sender, RoutedEventArgs e) => await AddAutoAsync(AppId.AdobeReader);
-    async void AddFortiClient_Click(object sender, RoutedEventArgs e) => await AddAutoAsync(AppId.FortiClient);
-
-    void AddPreset(AppPreset preset)
-    {
-        if (_config.Apps.Any(a => a.Name == preset.Name))
-        {
-            MessageBox.Show(this, $"\"{preset.Name}\" já está na lista.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var dlg = new OpenFileDialog { Filter = preset.FileFilter, Title = $"Selecione o instalador — {preset.Name}" };
-        MessageBoxHint(preset.Hint);
-        if (dlg.ShowDialog() != true) return;
-
-        _config.Apps.Add(new AppEntry
-        {
-            Name = preset.Name,
-            InstallerPath = dlg.FileName,
-            SilentArgs = AppPresets.DefaultArgsFor(preset, dlg.FileName),
-            Kind = preset.Kind
-        });
-    }
-
-    void AddCustomApp_Click(object sender, RoutedEventArgs e)
-    {
-        var dlg = new OpenFileDialog
-        {
-            Filter = "Instaladores|*.exe;*.msi|Todos os arquivos|*.*",
-            Title = "Selecione o instalador do aplicativo"
-        };
-        if (dlg.ShowDialog() != true) return;
-
-        var isMsi = Path.GetExtension(dlg.FileName).Equals(".msi", StringComparison.OrdinalIgnoreCase);
-        _config.Apps.Add(new AppEntry
-        {
-            Name = Path.GetFileNameWithoutExtension(dlg.FileName),
-            InstallerPath = dlg.FileName,
-            SilentArgs = isMsi ? "/qn /norestart" : "/S",
-            Kind = AppKind.Generic
-        });
-    }
-
-    void RemoveApp_Click(object sender, RoutedEventArgs e)
-    {
-        if (GridApps.SelectedItem is AppEntry entry)
-            _config.Apps.Remove(entry);
-    }
-
-    void MessageBoxHint(string hint)
-    {
-        AppendLog($"Dica: {hint}");
+        if (e.Handled) return;
+        e.Handled = true;
+        var args = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+        { RoutedEvent = UIElement.MouseWheelEvent, Source = sender };
+        var parent = VisualTreeHelper.GetParent((DependencyObject)sender) as UIElement;
+        parent?.RaiseEvent(args);
     }
 
     // ------------------------------------------------------------------
@@ -625,16 +686,20 @@ public partial class MainWindow : Window
         _config.BypassHardwareChecks = ChkBypass.IsChecked == true;
 
         _config.UseUnitSelection = ChkUnitSelection.IsChecked == true;
-        // Auditoria não se aplica ao Entra ID (lá o nome é aplicado por tarefa no 1º logon).
         _config.UnitMethod = (RbUnitAudit.IsChecked == true && _config.Mode != DeploymentMode.EntraId)
             ? UnitSelectionMethod.Audit
             : UnitSelectionMethod.FirstLogon;
-        _config.OfficeOffline = ChkOfficeOffline.IsChecked == true;
+
+        _config.OfficeOffline = RbOfficeOffline.IsChecked == true;
         _config.OfficeSourceFolder = TxtOfficeSource.Text.Trim();
+
         _config.UseCapturedWim = ChkGolden.IsChecked == true;
         _config.CapturedWimPath = TxtGoldenWim.Text.Trim();
         _config.WallpaperPath = TxtWallpaper.Text.Trim();
         _config.LockScreenPath = TxtLockScreen.Text.Trim();
+        _config.WindowsTheme = RbThemeLight.IsChecked == true ? WindowsThemeMode.Light
+            : RbThemeDark.IsChecked == true ? WindowsThemeMode.Dark
+            : WindowsThemeMode.Default;
         _config.FortiClientRegImportPath = TxtFortiReg.Text.Trim();
         _config.VpnUseTextImport = ChkVpnTextImport.IsChecked == true;
         _config.VpnXAuth = RbXauthSave.IsChecked == true ? VpnXAuthMode.Save
@@ -646,9 +711,8 @@ public partial class MainWindow : Window
         _config.UseCustomUnattend = RbCustomUnattend.IsChecked == true;
         _config.CustomUnattendPath = TxtCustomUnattend.Text.Trim();
         _config.PostScriptPath = TxtPostScript.Text.Trim();
-        _config.OfficeConfigXml = TxtOfficeConfig.Text;
 
-        // Persiste localmente (%APPDATA%\IsoForge\settings.json) a cada coleta.
+        // Persiste localmente a cada coleta.
         SettingsStore.Save(_config);
         return _config;
     }
@@ -658,7 +722,6 @@ public partial class MainWindow : Window
     {
         TxtSourceIso.Text = _config.SourceIsoPath;
         TxtOutputIso.Text = _config.OutputIsoPath;
-        // OscdimgPath: mantém o detectado nesta execução (não restaura o caminho temporário salvo).
         ChkNoPrompt.IsChecked = _config.NoPromptBoot;
         ChkAutoDisk.IsChecked = _config.AutoSelectDisk;
         ChkSkipWifi.IsChecked = _config.SkipWifiSetup;
@@ -686,14 +749,23 @@ public partial class MainWindow : Window
         ChkUnitSelection.IsChecked = _config.UseUnitSelection;
         RbUnitAudit.IsChecked = _config.UnitMethod == UnitSelectionMethod.Audit;
         RbUnitFirstLogon.IsChecked = _config.UnitMethod != UnitSelectionMethod.Audit;
+        if (PanelUnit != null) PanelUnit.IsEnabled = _config.UseUnitSelection;
 
-        ChkOfficeOffline.IsChecked = _config.OfficeOffline;
+        // Office
+        RbOfficeOffline.IsChecked = _config.OfficeOffline;
+        RbOfficeOnline.IsChecked = !_config.OfficeOffline;
         TxtOfficeSource.Text = _config.OfficeSourceFolder;
+        foreach (var obj in CmbOfficeLang.Items)
+            if (obj is ComboBoxItem it && (it.Tag as string) == _config.OfficeLanguage) { CmbOfficeLang.SelectedItem = it; break; }
+
         ChkGolden.IsChecked = _config.UseCapturedWim;
         TxtGoldenWim.Text = _config.CapturedWimPath;
 
         TxtWallpaper.Text = _config.WallpaperPath;
         TxtLockScreen.Text = _config.LockScreenPath;
+        RbThemeLight.IsChecked = _config.WindowsTheme == WindowsThemeMode.Light;
+        RbThemeDark.IsChecked = _config.WindowsTheme == WindowsThemeMode.Dark;
+        RbThemeDefault.IsChecked = _config.WindowsTheme == WindowsThemeMode.Default;
         TxtFortiReg.Text = _config.FortiClientRegImportPath;
         ChkVpnTextImport.IsChecked = _config.VpnUseTextImport;
         RbXauthSave.IsChecked = _config.VpnXAuth == VpnXAuthMode.Save;
@@ -727,12 +799,12 @@ public partial class MainWindow : Window
         var cfg = SettingsStore.LoadProfile(name);
         if (cfg == null) return;
         _config = cfg;
-        GridApps.ItemsSource = _config.Apps;
         GridVpn.ItemsSource = _config.VpnTunnels;
         GridUnits.ItemsSource = _config.Units;
-        TxtOfficeConfig.Text = string.IsNullOrWhiteSpace(_config.OfficeConfigXml)
-            ? BuildConfig.DefaultOfficeConfig : _config.OfficeConfigXml;
+        _config.Apps.CollectionChanged += (_, __) => Dispatcher.Invoke(() => { UpdateGoldenSummary(); UpdateDynamicConfigCards(); });
         ApplyConfigToUi();
+        RefreshAppCards();
+        UpdateUnitPreview();
         UpdateGoldenSummary();
         AppendLog($"Perfil carregado: {name}");
     }
@@ -799,7 +871,7 @@ public partial class MainWindow : Window
         var progress = new Progress<string>(AppendLog);
         var percent = new Progress<int>(p => Dispatcher.Invoke(() => BuildProgress.Value = p));
         BuildProgress.Value = 0;
-        BuildProgress.Visibility = Visibility.Visible;
+        BuildProgressPanel.Visibility = Visibility.Visible;
         try
         {
             AppendLog("==== Iniciando geração da ISO ====");
@@ -815,7 +887,7 @@ public partial class MainWindow : Window
         finally
         {
             SetBusy(false);
-            BuildProgress.Visibility = Visibility.Collapsed;
+            BuildProgressPanel.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -897,6 +969,7 @@ public partial class MainWindow : Window
         BtnDryRun.IsEnabled = !busy;
         BtnTestScript.IsEnabled = !busy;
         if (BtnSandbox != null) BtnSandbox.IsEnabled = !busy;
+        if (!busy) HideDownloadBar();
         Cursor = busy ? System.Windows.Input.Cursors.AppStarting : null;
     }
 

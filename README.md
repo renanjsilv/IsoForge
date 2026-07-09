@@ -1,6 +1,20 @@
-# IsoForge — Personalizador de ISO do Windows 11
+<div align="center">
+
+<img src="docs/logo.png" width="128" alt="IsoForge"/>
+
+# IsoForge
+
+### Personalizador de ISO do Windows 11
+
+[![Release](https://img.shields.io/github/v/release/renanjsilv/IsoForge?style=for-the-badge&label=Release&color=2563EB)](https://github.com/renanjsilv/IsoForge/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/renanjsilv/IsoForge/total?style=for-the-badge&label=Downloads&color=2ea043)](https://github.com/renanjsilv/IsoForge/releases)
+[![License](https://img.shields.io/github/license/renanjsilv/IsoForge?style=for-the-badge&label=Licen%C3%A7a&color=EA580C)](LICENSE)
 
 **🌐 Idioma:** **Português** · [English](README.en.md)
+
+</div>
+
+---
 
 **IsoForge** é um aplicativo Windows (executável único, sem instalar nada — nem .NET)
 que pega uma **ISO oficial do Windows 11** e gera uma **nova ISO personalizada e
@@ -24,11 +38,14 @@ do zero, com o mínimo de cliques.
     escola (WiFi + e-mail + **ingresso no Entra ID**). O usuário entra como **padrão**,
     seu usuário local (admin) é criado nos bastidores e os apps são instalados como SYSTEM.
     Opcionalmente **remove do grupo Administradores** o usuário Entra que fez o setup.
-- **Instalação silenciosa de aplicativos** no primeiro logon: Office 365 (via ODT),
-  AnyDesk, 7‑Zip, FortiClient, Adobe Reader e qualquer `.exe`/`.msi`. O IsoForge **baixa
-  sozinho** as versões mais recentes dos apps comuns.
-- **Office offline** — embute o Office na ISO (instala **sem internet**), com a versão
-  fixada para o ODT não tentar baixar do CDN.
+- **Aplicativos em cards** — escolha os programas clicando em cards; ao selecionar, as
+  opções de cada um aparecem na hora. Instalação silenciosa no primeiro logon: Office 365
+  (via ODT), AnyDesk, 7‑Zip, FortiClient, Adobe Reader e qualquer `.exe`/`.msi`. O IsoForge
+  **baixa sozinho** as versões mais recentes dos apps comuns.
+- **Office online/offline + idioma** — escolha se o Office baixa no 1º logon (online) ou já
+  vem embutido na ISO (offline, **sem internet**), e o idioma (pt‑BR, en‑US, es‑ES, pt‑PT).
+- **Tema claro ou escuro do Windows** — define o tema de aplicativos e do sistema no 1º
+  logon e para novos usuários.
 - **Seleção de disco automática (opcional)** — no WinPE escolhe o 1º disco fixo **que não
   seja o pendrive**, particiona e instala sozinho. Se não houver disco seguro, volta à
   seleção manual.
@@ -58,8 +75,8 @@ do zero, com o mínimo de cliques.
 |---|---|
 | **ISO** | ISO de origem, onde salvar, `oscdimg` (já embutido) e **seleção automática de disco**. |
 | **Sistema e usuário** | Modo de implantação (Conta local × Entra ID), usuário local, senha, nome da máquina, edição, bypass de requisitos. |
-| **Aplicativos** | Adiciona os apps (baixados automaticamente) e configura o Office (online/offline). |
-| **Personalização** | Papel de parede, tela de bloqueio, FortiClient VPN, seleção de unidade e scripts. |
+| **Aplicativos** | Escolhe os apps em cards (baixados automaticamente); ao selecionar, aparecem as opções — Office (online/offline + idioma) e FortiClient VPN. |
+| **Personalização** | Papel de parede, tela de bloqueio, **tema claro/escuro**, nome da máquina por unidade e scripts. |
 | **Imagem Golden** | Geração automática (Hyper‑V) de imagem com tudo pré‑instalado. |
 
 ### Sistema e usuário — modos de implantação
@@ -68,7 +85,7 @@ do zero, com o mínimo de cliques.
 ### Aplicativos
 ![Aplicativos](docs/03-aplicativos.png)
 
-### Personalização (aparência, VPN, unidade)
+### Personalização (aparência, tema, unidade)
 ![Personalização](docs/04-personalizacao.png)
 
 ### Imagem Golden

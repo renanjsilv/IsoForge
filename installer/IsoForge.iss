@@ -5,7 +5,7 @@
 #define AppName "IsoForge"
 ; AppVersion pode ser sobrescrito pela linha de comando (CI): ISCC /DAppVersion=1.2.3
 #ifndef AppVersion
-  #define AppVersion "1.3.1"
+  #define AppVersion "1.4.1"
 #endif
 #define AppPublisher "IsoForge"
 #define AppExe "IsoForge.exe"
@@ -56,5 +56,5 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; IconFilename: "{a
 [Run]
 ; Instalação interativa: oferece abrir o app ao final (o app baixa os instaladores sozinho ao abrir).
 Filename: "{app}\{#AppExe}"; Description: "Abrir o {#AppName}"; Flags: nowait postinstall skipifsilent
-; Auto-update silencioso: reabre o app sinalizando "Atualizado com sucesso".
-Filename: "{app}\{#AppExe}"; Parameters: "--updated"; Flags: nowait postinstall; Check: WizardSilent
+; Auto-update silencioso: reabre o app direto, sem mensagem.
+Filename: "{app}\{#AppExe}"; Flags: nowait postinstall; Check: WizardSilent
