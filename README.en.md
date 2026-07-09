@@ -28,7 +28,7 @@ few-clicks, from-scratch install.
 
 ---
 
-## ✨ What it does
+## What it does
 
 - **Two deployment modes:**
   - **Local account** — creates a local user (admin or standard), auto-logs in on first
@@ -66,7 +66,7 @@ few-clicks, from-scratch install.
 
 ---
 
-## 🖥️ The tabs
+## The tabs
 
 | Tab | Purpose |
 |---|---|
@@ -83,7 +83,7 @@ few-clicks, from-scratch install.
 
 ---
 
-## 🚀 How to use
+## How to use
 
 1. Download and run **`IsoForge.exe`** (or install via `IsoForge-Setup.exe` from *Releases*).
 2. On the **ISO** tab, select the official Windows 11 ISO and where to save the custom one.
@@ -96,7 +96,7 @@ few-clicks, from-scratch install.
 
 ---
 
-## 🧪 How to test (without wiping anything)
+## How to test (without wiping anything)
 
 - **Test install (Sandbox)** — installs the apps in a disposable Windows copy (Windows
   Sandbox). Enable it once (PowerShell **as Admin**, then reboot):
@@ -107,7 +107,7 @@ few-clicks, from-scratch install.
 
 ---
 
-## 🔄 Auto-update
+## Auto-update
 
 On launch, IsoForge checks this repo's **latest release** on GitHub. If a newer version
 exists, it offers to **download and install** it (with release notes and a "skip this
@@ -115,7 +115,7 @@ version" option).
 
 ---
 
-## 🔒 Privacy / local data
+## Privacy / local data
 
 - **No sensitive information** (IPs, passwords, PSKs, site names) lives in the code — the
   repository is clean and open.
@@ -126,7 +126,7 @@ version" option).
 
 ---
 
-## 🛠️ Build from source
+## Build from source
 
 Requires the **.NET 8 SDK**.
 
