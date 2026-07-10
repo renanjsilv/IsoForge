@@ -10,7 +10,7 @@
 [![Downloads](https://img.shields.io/github/downloads/renanjsilv/IsoForge/total?style=for-the-badge&label=Downloads&color=2ea043)](https://github.com/renanjsilv/IsoForge/releases)
 [![License](https://img.shields.io/github/license/renanjsilv/IsoForge?style=for-the-badge&label=License&color=EA580C)](LICENSE)
 
-**🌐 Language:** [Português](README.md) · **English**
+**Language:** [Português](README.md) · **English**
 
 </div>
 
@@ -57,11 +57,11 @@ few-clicks, from-scratch install.
 - **Windows light or dark theme** — sets the apps/system theme at first logon and for new users.
 - **Taskbar alignment** — center (Windows 11 default) or left (classic style), applied at
   first logon and for new users.
-- **Per-model driver injection (Dell)** — dedicated tab. Search the model in Dell's official
-  catalog and choose:
-  - **Full pack** — downloads the whole model pack; you tick which components to inject.
-  - **Individual drivers** — downloads **only** the drivers you tick (saves bandwidth), via
-    Dell's individual update packages (DUP).
+- **Per-model driver injection (Dell & Lenovo)** — dedicated tab. Search the model in the
+  vendor's official catalog and choose:
+  - **Full pack** (Dell & Lenovo) — downloads the model's driver pack; you tick which components to inject.
+  - **Individual drivers** (Dell) — downloads **only** the drivers you tick (saves bandwidth),
+    via Dell's individual update packages (DUP).
   Injection is done on the ISO via `autounattend` (offlineServicing) + `pnputil`.
 - **Automatic disk selection (optional)** — in WinPE it picks the first fixed disk that is
   **not the USB stick**, partitions it and installs unattended. Falls back to manual if no
@@ -177,6 +177,6 @@ The `Release` workflow compiles the executable, builds the installer and creates
 
 ---
 
-## 📄 License
+## License
 
 [MIT](LICENSE) — use, modify and distribute freely.

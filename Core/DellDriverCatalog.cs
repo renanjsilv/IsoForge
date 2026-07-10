@@ -5,18 +5,12 @@ using System.Xml.Linq;
 
 namespace IsoForge.Core;
 
-/// <summary>Um driver pack de um modelo (já filtrado para Windows 11 x64).</summary>
-public record DellDriverModel(string Label, string Url, string HashMd5, long SizeBytes)
-{
-    public string SizeText => SizeBytes > 0 ? $"{SizeBytes / 1024.0 / 1024.0:0} MB" : "";
-}
-
 /// <summary>
 /// Busca a lista de driver packs da Dell direto do catálogo oficial de deployment
 /// (downloads.dell.com/catalog/DriverPackCatalog.cab) e baixa/extrai o pack de um modelo.
 /// É o mesmo catálogo usado por SCCM/MDT: um arquivo por modelo com todos os .inf.
 /// </summary>
-public class DellDriverCatalog
+public class DellDriverCatalog : IDriverPackCatalog
 {
     const string CatalogUrl = "https://downloads.dell.com/catalog/DriverPackCatalog.cab";
 
@@ -37,10 +31,10 @@ public class DellDriverCatalog
         Directory.CreateDirectory(BaseFolder);
     }
 
-    List<DellDriverModel>? _modelCache;
+    List<DriverPackModel>? _modelCache;
 
     /// <summary>Baixa o catálogo, extrai o XML e devolve os modelos com pack de Windows 11 x64.</summary>
-    public async Task<List<DellDriverModel>> FetchModelsAsync(IProgress<string> log, CancellationToken ct)
+    public async Task<List<DriverPackModel>> FetchModelsAsync(IProgress<string> log, CancellationToken ct)
     {
         if (_modelCache != null) return _modelCache; // cache em memória (mesma sessão)
 
@@ -71,7 +65,7 @@ public class DellDriverCatalog
 
         // Ignora namespace: casa pelos nomes locais (o XML da Dell pode ou não ter xmlns).
         XElement[] pkgs = root.Descendants().Where(e => e.Name.LocalName == "DriverPackage").ToArray();
-        var list = new List<DellDriverModel>();
+        var list = new List<DriverPackModel>();
         foreach (var pkg in pkgs)
         {
             // Só Windows 11 x64.
@@ -99,7 +93,7 @@ public class DellDriverCatalog
                         ? nameAttr
                         : string.Join(" ", new[] { brandName, DisplayOf(model) }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
                     if (string.IsNullOrWhiteSpace(label)) continue;
-                    list.Add(new DellDriverModel(label, url, md5, size));
+                    list.Add(new DriverPackModel(label, url, md5, size));
                 }
             }
         }
@@ -130,7 +124,7 @@ public class DellDriverCatalog
     }
 
     /// <summary>Baixa o pack do modelo, confere o MD5 e extrai os .inf numa pasta. Devolve a pasta.</summary>
-    public async Task<string> DownloadAndExtractAsync(DellDriverModel model, IProgress<string> log, IProgress<double>? pct, CancellationToken ct)
+    public async Task<string> DownloadAndExtractAsync(DriverPackModel model, IProgress<string> log, IProgress<double>? pct, CancellationToken ct)
     {
         var safe = string.Concat(model.Label.Split(Path.GetInvalidFileNameChars())).Replace(' ', '_');
         var dir = Path.Combine(BaseFolder, safe);

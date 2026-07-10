@@ -10,7 +10,7 @@
 [![Downloads](https://img.shields.io/github/downloads/renanjsilv/IsoForge/total?style=for-the-badge&label=Downloads&color=2ea043)](https://github.com/renanjsilv/IsoForge/releases)
 [![License](https://img.shields.io/github/license/renanjsilv/IsoForge?style=for-the-badge&label=Licen%C3%A7a&color=EA580C)](LICENSE)
 
-**🌐 Idioma:** **Português** · [English](README.en.md)
+**Idioma:** **Português** · [English](README.en.md)
 
 </div>
 
@@ -29,7 +29,7 @@ do zero, com o mínimo de cliques.
 
 ---
 
-## ✨ O que ele faz
+## O que ele faz
 
 - **Dois modos de implantação:**
   - **Conta local** — cria um usuário local (admin ou padrão), faz logon automático no
@@ -59,11 +59,11 @@ do zero, com o mínimo de cliques.
   logon e para novos usuários.
 - **Alinhamento da barra de tarefas** — centro (padrão do Windows 11) ou à esquerda
   (estilo clássico), aplicado no 1º logon e para novos usuários.
-- **Injeção de drivers por modelo (Dell)** — aba dedicada. Busque o modelo no catálogo oficial
-  da Dell e escolha:
-  - **Pack completo** — baixa tudo do modelo e você marca quais componentes injetar.
-  - **Drivers individuais** — baixa **só** os drivers que você marcar (economiza banda), via os
-    pacotes individuais (DUP) da Dell.
+- **Injeção de drivers por modelo (Dell e Lenovo)** — aba dedicada. Busque o modelo no catálogo
+  oficial do fabricante e escolha:
+  - **Pack completo** (Dell e Lenovo) — baixa o pack do modelo e você marca quais componentes injetar.
+  - **Drivers individuais** (Dell) — baixa **só** os drivers que você marcar (economiza banda),
+    via os pacotes individuais (DUP) da Dell.
   A injeção é feita na ISO via `autounattend` (offlineServicing) + `pnputil`, pra máquina já
   subir com tudo funcionando.
 - **Seleção de disco automática (opcional)** — no WinPE escolhe o 1º disco fixo **que não
@@ -92,7 +92,7 @@ do zero, com o mínimo de cliques.
 
 ---
 
-## 🖥️ As telas
+## As telas
 
 | Aba | O que faz |
 |---|---|
@@ -116,7 +116,7 @@ do zero, com o mínimo de cliques.
 
 ---
 
-## 🚀 Como usar
+## Como usar
 
 1. Baixe e rode o **`IsoForge.exe`** (ou instale pelo `IsoForge-Setup.exe` das *Releases*).
 2. Na aba **ISO**, selecione a ISO oficial do Windows 11 e onde salvar a personalizada.
@@ -129,7 +129,7 @@ do zero, com o mínimo de cliques.
 
 ---
 
-## 🧪 Como testar (sem formatar nada)
+## Como testar (sem formatar nada)
 
 - **Testar instalação (Sandbox)** — instala os apps numa cópia descartável do Windows
   (Windows Sandbox). Requer habilitar o Sandbox uma vez (PowerShell **como Admin**,
@@ -140,7 +140,7 @@ do zero, com o mínimo de cliques.
 
 ---
 
-## 🔄 Auto‑atualização
+## Auto‑atualização
 
 Ao abrir, o IsoForge consulta o **último release** deste repositório no GitHub. Se houver
 versão mais nova, ele oferece **baixar e instalar** automaticamente. Assim, cada nova
@@ -148,7 +148,7 @@ versão publicada chega ao usuário sem trabalho manual.
 
 ---
 
-## 🔒 Privacidade / dados locais
+## Privacidade / dados locais
 
 - **Nenhuma informação sensível** (IPs, senhas, PSK, nomes de unidades) fica no código —
   o repositório é limpo e pode ser aberto.
@@ -159,7 +159,7 @@ versão publicada chega ao usuário sem trabalho manual.
 
 ---
 
-## 🛠️ Compilar a partir do código
+## Compilar a partir do código
 
 Requer o **.NET 8 SDK**.
 
@@ -189,6 +189,6 @@ O workflow `Release` compila o executável, gera o instalador e cria a **release
 
 ---
 
-## 📄 Licença
+## Licença
 
 [MIT](LICENSE) — use, modifique e distribua livremente.

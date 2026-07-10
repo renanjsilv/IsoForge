@@ -18,12 +18,16 @@ public partial class MainWindow : Window
     readonly InstallerFetcher _fetcher = new();
     readonly ConcurrentDictionary<AppId, FetchResult> _fetched = new();
     readonly DellDriverCatalog _driverCatalog = new();
+    readonly LenovoDriverCatalog _lenovoCatalog = new();
     readonly DellComponentCatalog _componentCatalog = new();
-    List<DellDriverModel> _dellModels = new();
+    List<DriverPackModel> _dellModels = new();
     List<DellModelRef> _componentModels = new();
     readonly ObservableCollection<DriverCategoryVm> _driverCategories = new();
     readonly ObservableCollection<DriverItemVm> _individualDrivers = new();
     bool DriverIndividualMode => RbDrvIndividual?.IsChecked == true;
+    // Fabricante ativo para o modo "pack". Individual (DUP) só existe para a Dell.
+    bool IsLenovo => (CmbDriverVendor?.SelectedItem as ComboBoxItem)?.Content as string == "Lenovo";
+    IDriverPackCatalog PackCatalog => IsLenovo ? _lenovoCatalog : _driverCatalog;
     CancellationTokenSource? _cts;
     bool _syncingCards;
 
@@ -386,6 +390,27 @@ public partial class MainWindow : Window
         PanelDriverSearch.Visibility = Visibility.Visible;
     }
 
+    // Troca de fabricante (Dell/Lenovo). Individual (DUP) só existe para a Dell.
+    void DriverVendor_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        // DriverComponentsCard é criado depois do ComboBox no XAML: se ainda é null, o parse não terminou.
+        if (DriverComponentsCard == null) return;
+        RbDrvIndividual.IsEnabled = !IsLenovo;
+        RbDrvIndividual.ToolTip = IsLenovo ? "Disponível apenas para Dell." : null;
+        if (IsLenovo && DriverIndividualMode)
+        {
+            RbDrvPack.IsChecked = true; // força pack -> dispara DriverMode_Changed (reset + carrega)
+            return;
+        }
+        _dellModels = new(); _componentModels = new(); _individualDrivers.Clear();
+        _drvSelecting = true; LstDriverModels.ItemsSource = null; _drvSelecting = false;
+        ShowModelList();
+        TxtDriverSearch.IsEnabled = false;
+        BtnDriverDownload.IsEnabled = false;
+        DriverComponentsCard.Visibility = Visibility.Collapsed;
+        _ = LoadDriverModelsAsync(force: false);
+    }
+
     void DriverMode_Changed(object sender, RoutedEventArgs e)
     {
         if (TxtDriverModeHint == null) return;
@@ -434,9 +459,10 @@ public partial class MainWindow : Window
             }
             else
             {
-                AppendLog("Carregando catálogo de drivers da Dell...");
-                _dellModels = await Task.Run(() => _driverCatalog.FetchModelsAsync(progress, CancellationToken.None));
-                AppendLog($"{_dellModels.Count} modelos Dell (Windows 11 x64) carregados.");
+                var vendor = IsLenovo ? "Lenovo" : "Dell";
+                AppendLog($"Carregando catálogo de drivers da {vendor}...");
+                _dellModels = await Task.Run(() => PackCatalog.FetchModelsAsync(progress, CancellationToken.None));
+                AppendLog($"{_dellModels.Count} modelos {vendor} (Windows 11 x64) carregados.");
             }
             ShowModelList();
             TxtDriverSearch.IsEnabled = true;
@@ -466,7 +492,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            IEnumerable<DellDriverModel> items = _dellModels;
+            IEnumerable<DriverPackModel> items = _dellModels;
             if (q.Length > 0) items = _dellModels.Where(m => m.Label.Contains(q, StringComparison.OrdinalIgnoreCase));
             LstDriverModels.DisplayMemberPath = "Label";
             LstDriverModels.ItemsSource = items.Take(300).ToList();
@@ -482,7 +508,7 @@ public partial class MainWindow : Window
 
         if (!DriverIndividualMode)
         {
-            BtnDriverDownload.IsEnabled = LstDriverModels.SelectedItem is DellDriverModel;
+            BtnDriverDownload.IsEnabled = LstDriverModels.SelectedItem is DriverPackModel;
             return;
         }
 
@@ -555,7 +581,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (LstDriverModels.SelectedItem is not DellDriverModel model)
+        if (LstDriverModels.SelectedItem is not DriverPackModel model)
         {
             MessageBox.Show(this, "Selecione um modelo na lista primeiro.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
@@ -565,11 +591,11 @@ public partial class MainWindow : Window
         var percent = PercentTo($"Baixando driver {model.Label}");
         try
         {
-            var folder = await Task.Run(() => _driverCatalog.DownloadAndExtractAsync(model, progress, percent, CancellationToken.None));
+            var folder = await Task.Run(() => PackCatalog.DownloadAndExtractAsync(model, progress, percent, CancellationToken.None));
             _config.DriverPackPath = folder;
             _config.DriverModelName = model.Label;
             _config.DriverExcludedCategories = new();
-            TxtDriverStatus.Text = $"Driver pronto: {model.Label} ({model.SizeText}). Escolha os componentes abaixo.";
+            TxtDriverStatus.Text = $"Driver pronto: {model.Label}. Escolha os componentes abaixo.";
             AppendLog($"Driver do modelo {model.Label} baixado e extraído em: {folder}");
             await RefreshDriverCategoriesAsync(null);
         }

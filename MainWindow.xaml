@@ -402,7 +402,7 @@
                         <GroupBox Header="Drivers do fabricante (injeção automática por modelo)">
                             <StackPanel>
                                 <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,12"
-                                           Text="Baixa os drivers oficiais do modelo (rede, chipset, vídeo…) e injeta na ISO, para a máquina já subir com tudo funcionando. Modelos corporativos (Latitude, OptiPlex, Precision, XPS, Dell Pro)."/>
+                                           Text="Baixa os drivers oficiais do modelo (rede, chipset, vídeo…) e injeta na ISO, para a máquina já subir com tudo funcionando. Modelos corporativos Dell (Latitude, OptiPlex, Precision, XPS) e Lenovo (ThinkPad, ThinkCentre)."/>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Modo:" Width="90" VerticalAlignment="Center"/>
                                     <StackPanel Orientation="Horizontal">
@@ -416,8 +416,10 @@
                                            Text="Pack completo: baixa tudo do modelo de uma vez (GBs), sem executar nada. Garantido."/>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Fabricante:" Width="90" VerticalAlignment="Center"/>
-                                    <ComboBox x:Name="CmbDriverVendor" Width="140" Height="34" HorizontalAlignment="Left">
+                                    <ComboBox x:Name="CmbDriverVendor" Width="140" Height="34" HorizontalAlignment="Left"
+                                              SelectionChanged="DriverVendor_Changed">
                                         <ComboBoxItem Content="Dell" IsSelected="True"/>
+                                        <ComboBoxItem Content="Lenovo"/>
                                     </ComboBox>
                                     <Button DockPanel.Dock="Right" Content="Recarregar" Style="{StaticResource Secondary}"
                                             HorizontalAlignment="Right" Click="LoadDrivers_Click"

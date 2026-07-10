@@ -84,6 +84,22 @@ public partial class App : Application
             return;
         }
 
+        // Diagnóstico: valida o catálogo de packs da Lenovo (parse real + amostra).
+        if (e.Args.Any(a => a.Equals("--dumplenovo", StringComparison.OrdinalIgnoreCase)))
+        {
+            var outFile = Path.Combine(Path.GetTempPath(), "isoforge_lenovo.txt");
+            try
+            {
+                var cat = new LenovoDriverCatalog();
+                var models = await cat.FetchModelsAsync(new Progress<string>(_ => { }), CancellationToken.None);
+                var sample = string.Join("\n", models.Take(10).Select(m => $"  {m.Label}\n    {m.Url}"));
+                File.WriteAllText(outFile, $"OK modelos={models.Count}\n{sample}\n");
+            }
+            catch (Exception ex) { File.WriteAllText(outFile, $"ERRO: {ex}"); }
+            Shutdown(0);
+            return;
+        }
+
         new MainWindow().Show();
     }
 }
