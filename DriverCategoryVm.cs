@@ -16,5 +16,5 @@ public class DriverItemVm
     public string Name { get; set; } = "";
     public string Detail { get; set; } = "";   // ex.: "  [Rede · 32 MB]"
     public bool Include { get; set; }          // ligado ao CheckBox (TwoWay)
-    public DellDriver Driver { get; set; } = null!;
+    public DriverComponent Driver { get; set; } = null!;
 }

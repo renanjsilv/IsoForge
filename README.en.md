@@ -60,8 +60,8 @@ few-clicks, from-scratch install.
 - **Per-model driver injection (Dell & Lenovo)** — dedicated tab. Search the model in the
   vendor's official catalog and choose:
   - **Full pack** (Dell & Lenovo) — downloads the model's driver pack; you tick which components to inject.
-  - **Individual drivers** (Dell) — downloads **only** the drivers you tick (saves bandwidth),
-    via Dell's individual update packages (DUP).
+  - **Individual drivers** (Dell & Lenovo) — downloads **only** the drivers you tick (saves
+    bandwidth), via the vendor's individual update packages.
   Injection is done on the ISO via `autounattend` (offlineServicing) + `pnputil`.
 - **Automatic disk selection (optional)** — in WinPE it picks the first fixed disk that is
   **not the USB stick**, partitions it and installs unattended. Falls back to manual if no

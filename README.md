@@ -62,8 +62,8 @@ do zero, com o mínimo de cliques.
 - **Injeção de drivers por modelo (Dell e Lenovo)** — aba dedicada. Busque o modelo no catálogo
   oficial do fabricante e escolha:
   - **Pack completo** (Dell e Lenovo) — baixa o pack do modelo e você marca quais componentes injetar.
-  - **Drivers individuais** (Dell) — baixa **só** os drivers que você marcar (economiza banda),
-    via os pacotes individuais (DUP) da Dell.
+  - **Drivers individuais** (Dell e Lenovo) — baixa **só** os drivers que você marcar
+    (economiza banda), via os pacotes individuais do fabricante.
   A injeção é feita na ISO via `autounattend` (offlineServicing) + `pnputil`, pra máquina já
   subir com tudo funcionando.
 - **Seleção de disco automática (opcional)** — no WinPE escolhe o 1º disco fixo **que não

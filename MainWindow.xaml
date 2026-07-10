@@ -423,7 +423,7 @@
                                     </ComboBox>
                                     <Button DockPanel.Dock="Right" Content="Recarregar" Style="{StaticResource Secondary}"
                                             HorizontalAlignment="Right" Click="LoadDrivers_Click"
-                                            ToolTip="Recarrega a lista de modelos do catálogo da Dell."/>
+                                            ToolTip="Recarrega a lista de modelos do catálogo do fabricante."/>
                                 </DockPanel>
                                 <DockPanel x:Name="PanelDriverSearch" Margin="0,0,0,6">
                                     <TextBlock Text="Modelo:" Width="90" VerticalAlignment="Center"/>

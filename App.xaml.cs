@@ -66,7 +66,7 @@ public partial class App : Application
             try
             {
                 var cat = new DellComponentCatalog();
-                var drv = new DellDriver(
+                var drv = new DriverComponent(
                     "Intel Integrated Sensor Solution Driver",
                     "Chipset / Sistema",
                     "https://downloads.dell.com/FOLDER12660163M/4/Intel-Integrated-Sensor-Solution-Driver_025D7_WIN64_3.11.100.7733_A00_02.EXE",
@@ -94,6 +94,25 @@ public partial class App : Application
                 var models = await cat.FetchModelsAsync(new Progress<string>(_ => { }), CancellationToken.None);
                 var sample = string.Join("\n", models.Take(10).Select(m => $"  {m.Label}\n    {m.Url}"));
                 File.WriteAllText(outFile, $"OK modelos={models.Count}\n{sample}\n");
+            }
+            catch (Exception ex) { File.WriteAllText(outFile, $"ERRO: {ex}"); }
+            Shutdown(0);
+            return;
+        }
+
+        // Diagnóstico: valida o catálogo INDIVIDUAL da Lenovo (MTM -> descritores).
+        if (e.Args.Any(a => a.Equals("--dumplenovoindiv", StringComparison.OrdinalIgnoreCase)))
+        {
+            var outFile = Path.Combine(Path.GetTempPath(), "isoforge_lenovoindiv.txt");
+            try
+            {
+                var cat = new LenovoComponentCatalog();
+                await cat.EnsureLoadedAsync(new Progress<string>(_ => { }), CancellationToken.None);
+                var models = cat.Models();
+                var pick = models.FirstOrDefault(m => m.Name.Contains("ThinkPad", StringComparison.OrdinalIgnoreCase)) ?? models.FirstOrDefault();
+                var drivers = pick != null ? await cat.DriversForModelAsync(pick, new Progress<string>(_ => { }), CancellationToken.None) : new();
+                var sample = string.Join("\n", drivers.Take(15).Select(d => $"  [{d.Category}] {d.Name} — {d.SizeText}"));
+                File.WriteAllText(outFile, $"OK modelos={models.Count}\nmodelo={pick?.Name} MTM={pick?.SystemId} drivers={drivers.Count}\n{sample}\n");
             }
             catch (Exception ex) { File.WriteAllText(outFile, $"ERRO: {ex}"); }
             Shutdown(0);

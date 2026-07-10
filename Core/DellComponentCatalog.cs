@@ -7,21 +7,12 @@ using System.Xml.Linq;
 
 namespace IsoForge.Core;
 
-/// <summary>Um driver individual (Dell Update Package) aplicável a um modelo, para download avulso.</summary>
-public record DellDriver(string Name, string Category, string Url, string HashMd5, long SizeBytes)
-{
-    public string SizeText => SizeBytes >= 1024L * 1024 ? $"{SizeBytes / 1024.0 / 1024.0:0} MB" : $"{SizeBytes / 1024.0:0} KB";
-}
-
-/// <summary>Referência a um modelo (nome + systemID) para filtrar componentes.</summary>
-public record DellModelRef(string Name, string SystemId);
-
 /// <summary>
 /// Lê o catálogo de COMPONENTES individuais da Dell (CatalogPC.cab): cada driver é um DUP .EXE
 /// separado, pequeno, com URL própria. Permite baixar só os drivers escolhidos (economiza banda)
 /// e extraí-los para .inf (via o extrator silencioso do próprio DUP: /s /e=).
 /// </summary>
-public class DellComponentCatalog
+public class DellComponentCatalog : IDriverComponentCatalog
 {
     const string CatalogUrl = "https://downloads.dell.com/catalog/CatalogPC.cab";
 
@@ -43,7 +34,7 @@ public class DellComponentCatalog
         Directory.CreateDirectory(BaseFolder);
     }
 
-    internal record ParsedComponent(string Name, string Category, string Url, string HashMd5, long Size, List<DellModelRef> Models);
+    internal record ParsedComponent(string Name, string Category, string Url, string HashMd5, long Size, List<DriverModelRef> Models);
 
     /// <summary>Baixa o catálogo (uma vez), extrai o XML e faz o parse dos componentes de driver Win11 x64.</summary>
     public async Task EnsureLoadedAsync(IProgress<string> log, CancellationToken ct)
@@ -75,7 +66,7 @@ public class DellComponentCatalog
 
     /// <summary>Modelos que têm ao menos um driver Win11 x64 (um por NOME — vários systemID
     /// da Dell podem compartilhar o mesmo nome, por isso deduplica por nome, não por systemID).</summary>
-    public List<DellModelRef> Models()
+    public List<DriverModelRef> Models()
     {
         if (_cache == null) return new();
         return _cache.SelectMany(c => c.Models)
@@ -85,13 +76,17 @@ public class DellComponentCatalog
             .ToList();
     }
 
+    /// <summary>Implementação da interface (Dell é em memória, então é síncrono envolto em Task).</summary>
+    public Task<List<DriverComponent>> DriversForModelAsync(DriverModelRef model, IProgress<string> log, CancellationToken ct)
+        => Task.FromResult(DriversForName(model.Name));
+
     /// <summary>Drivers individuais aplicáveis a um modelo pelo NOME (une todos os systemID desse nome).</summary>
-    public List<DellDriver> DriversForName(string modelName)
+    public List<DriverComponent> DriversForName(string modelName)
     {
         if (_cache == null) return new();
         return _cache
             .Where(c => c.Models.Any(m => m.Name.Equals(modelName, StringComparison.OrdinalIgnoreCase)))
-            .Select(c => new DellDriver(c.Name, c.Category, c.Url, c.HashMd5, c.Size))
+            .Select(c => new DriverComponent(c.Name, c.Category, c.Url, c.HashMd5, c.Size))
             .GroupBy(d => d.Url, StringComparer.OrdinalIgnoreCase).Select(g => g.First()) // mesmo driver em vários systemID
             .OrderBy(d => d.Category, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -151,7 +146,7 @@ public class DellComponentCatalog
         var catEl = El(el, "Category");
         var category = CategoryOf((string?)catEl?.Attribute("value"), DisplayIn(catEl));
 
-        var models = new List<DellModelRef>();
+        var models = new List<DriverModelRef>();
         foreach (var brand in el.Descendants().Where(e => e.Name.LocalName == "Brand"))
         {
             var brandName = (DisplayIn(brand) ?? "").Trim();
@@ -169,7 +164,7 @@ public class DellComponentCatalog
                     label = $"{brandName} {modelName}".Trim();
                 else
                     label = modelName;
-                models.Add(new DellModelRef(label, sysId));
+                models.Add(new DriverModelRef(label, sysId));
             }
         }
         if (models.Count == 0) return null;
@@ -199,7 +194,7 @@ public class DellComponentCatalog
     };
 
     /// <summary>Baixa os DUPs selecionados, confere o MD5 e extrai os .inf (dup /s /e=) numa pasta única.</summary>
-    public async Task<string> DownloadAndExtractAsync(IReadOnlyList<DellDriver> selected, string modelLabel,
+    public async Task<string> DownloadAndExtractAsync(IReadOnlyList<DriverComponent> selected, string modelLabel,
         IProgress<string> log, IProgress<double>? pct, CancellationToken ct)
     {
         var safe = string.Concat(modelLabel.Split(Path.GetInvalidFileNameChars())).Replace(' ', '_');

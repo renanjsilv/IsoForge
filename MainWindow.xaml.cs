@@ -20,14 +20,16 @@ public partial class MainWindow : Window
     readonly DellDriverCatalog _driverCatalog = new();
     readonly LenovoDriverCatalog _lenovoCatalog = new();
     readonly DellComponentCatalog _componentCatalog = new();
+    readonly LenovoComponentCatalog _lenovoComponentCatalog = new();
     List<DriverPackModel> _dellModels = new();
-    List<DellModelRef> _componentModels = new();
+    List<DriverModelRef> _componentModels = new();
     readonly ObservableCollection<DriverCategoryVm> _driverCategories = new();
     readonly ObservableCollection<DriverItemVm> _individualDrivers = new();
     bool DriverIndividualMode => RbDrvIndividual?.IsChecked == true;
-    // Fabricante ativo para o modo "pack". Individual (DUP) só existe para a Dell.
+    // Fabricante ativo. Pack e individual existem para Dell e Lenovo.
     bool IsLenovo => (CmbDriverVendor?.SelectedItem as ComboBoxItem)?.Content as string == "Lenovo";
     IDriverPackCatalog PackCatalog => IsLenovo ? _lenovoCatalog : _driverCatalog;
+    IDriverComponentCatalog ComponentCatalog => IsLenovo ? _lenovoComponentCatalog : _componentCatalog;
     CancellationTokenSource? _cts;
     bool _syncingCards;
 
@@ -390,18 +392,11 @@ public partial class MainWindow : Window
         PanelDriverSearch.Visibility = Visibility.Visible;
     }
 
-    // Troca de fabricante (Dell/Lenovo). Individual (DUP) só existe para a Dell.
+    // Troca de fabricante (Dell/Lenovo). Ambos têm pack e individual.
     void DriverVendor_Changed(object sender, SelectionChangedEventArgs e)
     {
         // DriverComponentsCard é criado depois do ComboBox no XAML: se ainda é null, o parse não terminou.
         if (DriverComponentsCard == null) return;
-        RbDrvIndividual.IsEnabled = !IsLenovo;
-        RbDrvIndividual.ToolTip = IsLenovo ? "Disponível apenas para Dell." : null;
-        if (IsLenovo && DriverIndividualMode)
-        {
-            RbDrvPack.IsChecked = true; // força pack -> dispara DriverMode_Changed (reset + carrega)
-            return;
-        }
         _dellModels = new(); _componentModels = new(); _individualDrivers.Clear();
         _drvSelecting = true; LstDriverModels.ItemsSource = null; _drvSelecting = false;
         ShowModelList();
@@ -416,7 +411,7 @@ public partial class MainWindow : Window
         if (TxtDriverModeHint == null) return;
         bool indiv = DriverIndividualMode;
         TxtDriverModeHint.Text = indiv
-            ? "Drivers individuais: escolha o modelo e marque só os drivers que quer (baixa MBs). Extrai via o instalador assinado da Dell (pede UAC 1x)."
+            ? "Drivers individuais: escolha o modelo e marque só os drivers que quer (baixa MBs). Extrai via o instalador assinado do fabricante (pede UAC 1x)."
             : "Pack completo: baixa tudo do modelo de uma vez (GBs), sem executar nada. Garantido.";
         BtnDriverDownload.Content = indiv ? "Baixar selecionados" : "Baixar pack deste modelo";
         // Troca de modo: volta a escolher modelo e limpa (os catálogos são diferentes).
@@ -453,9 +448,11 @@ public partial class MainWindow : Window
         {
             if (DriverIndividualMode)
             {
-                await _componentCatalog.EnsureLoadedAsync(progress, CancellationToken.None);
-                _componentModels = _componentCatalog.Models();
-                AppendLog($"{_componentModels.Count} modelos Dell (Windows 11 x64) com drivers individuais.");
+                var comp = ComponentCatalog; // avalia na thread da UI (lê o ComboBox)
+                var vendor = IsLenovo ? "Lenovo" : "Dell";
+                await comp.EnsureLoadedAsync(progress, CancellationToken.None);
+                _componentModels = comp.Models();
+                AppendLog($"{_componentModels.Count} modelos {vendor} (Windows 11) com drivers individuais.");
             }
             else
             {
@@ -486,7 +483,7 @@ public partial class MainWindow : Window
         var q = TxtDriverSearch.Text?.Trim() ?? "";
         if (DriverIndividualMode)
         {
-            IEnumerable<DellModelRef> items = _componentModels;
+            IEnumerable<DriverModelRef> items = _componentModels;
             if (q.Length > 0) items = _componentModels.Where(m => m.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
             LstDriverModels.DisplayMemberPath = "Name";
             LstDriverModels.ItemsSource = items.Take(300).ToList();
@@ -502,8 +499,8 @@ public partial class MainWindow : Window
         BtnDriverDownload.IsEnabled = false; // refiltrou -> sem seleção
     }
 
-    // Clicar num modelo: pack só habilita o botão; individual mostra os drivers NA MESMA caixa.
-    void DriverModel_Selected(object sender, SelectionChangedEventArgs e)
+    // Clicar num modelo: pack só habilita o botão; individual lista os drivers NA MESMA caixa.
+    async void DriverModel_Selected(object sender, SelectionChangedEventArgs e)
     {
         if (_drvSelecting || LstDriverModels.SelectedItem == null) return;
 
@@ -513,8 +510,15 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (LstDriverModels.SelectedItem is not DellModelRef m) return;
-        var drivers = _componentCatalog.DriversForName(m.Name);
+        if (LstDriverModels.SelectedItem is not DriverModelRef m) return;
+        var comp = ComponentCatalog; // avalia na thread da UI (lê o ComboBox)
+        SetBusy(true);
+        var progress = new Progress<string>(AppendLog);
+        List<DriverComponent> drivers;
+        try { drivers = await comp.DriversForModelAsync(m, progress, CancellationToken.None); }
+        catch (Exception ex) { AppendLog($"ERRO ao listar drivers: {ex.Message}"); SetBusy(false); return; }
+        SetBusy(false);
+
         _individualDrivers.Clear();
         foreach (var d in drivers)
             _individualDrivers.Add(new DriverItemVm { Name = d.Name, Detail = $"  [{d.Category} · {d.SizeText}]", Include = false, Driver = d });
@@ -530,7 +534,6 @@ public partial class MainWindow : Window
         PanelDriverSearch.Visibility = Visibility.Collapsed;
         DriverPickPanel.Visibility = Visibility.Visible;
         BtnDriverDownload.IsEnabled = true;
-        AppendLog($"{_individualDrivers.Count} drivers individuais para {m.Name}.");
     }
 
     void DriverBack_Click(object sender, RoutedEventArgs e)
@@ -566,7 +569,8 @@ public partial class MainWindow : Window
             var pc = PercentTo("Baixando drivers selecionados");
             try
             {
-                var folder = await _componentCatalog.DownloadAndExtractAsync(chosen, _pendingModelLabel, prog, pc, CancellationToken.None);
+                var comp = ComponentCatalog; // avalia na thread da UI (lê o ComboBox)
+                var folder = await comp.DownloadAndExtractAsync(chosen, _pendingModelLabel, prog, pc, CancellationToken.None);
                 _config.DriverPackPath = folder;
                 _config.DriverModelName = $"{_pendingModelLabel} ({chosen.Count} driver(s))";
                 _config.DriverExcludedCategories = new();
