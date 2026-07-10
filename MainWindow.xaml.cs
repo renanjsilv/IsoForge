@@ -460,8 +460,9 @@ public partial class MainWindow : Window
             else
             {
                 var vendor = IsLenovo ? "Lenovo" : "Dell";
+                var catalog = PackCatalog; // avalia na thread da UI (lê o ComboBox)
                 AppendLog($"Carregando catálogo de drivers da {vendor}...");
-                _dellModels = await Task.Run(() => PackCatalog.FetchModelsAsync(progress, CancellationToken.None));
+                _dellModels = await Task.Run(() => catalog.FetchModelsAsync(progress, CancellationToken.None));
                 AppendLog($"{_dellModels.Count} modelos {vendor} (Windows 11 x64) carregados.");
             }
             ShowModelList();
@@ -591,7 +592,8 @@ public partial class MainWindow : Window
         var percent = PercentTo($"Baixando driver {model.Label}");
         try
         {
-            var folder = await Task.Run(() => PackCatalog.DownloadAndExtractAsync(model, progress, percent, CancellationToken.None));
+            var catalog = PackCatalog; // avalia na thread da UI (lê o ComboBox)
+            var folder = await Task.Run(() => catalog.DownloadAndExtractAsync(model, progress, percent, CancellationToken.None));
             _config.DriverPackPath = folder;
             _config.DriverModelName = model.Label;
             _config.DriverExcludedCategories = new();
