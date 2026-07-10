@@ -84,6 +84,59 @@ Check(appTbCenter.Contains("-Value 1") && appTbCenter.Contains("/d 1 /f"), "barr
 Check(ExtraScriptsGenerator.HasAppearance(new BuildConfig { TaskbarAlign = TaskbarAlignment.Left }), "barra: alinhamento define HasAppearance (gera o Set-Appearance.ps1)");
 Check(!ExtraScriptsGenerator.Appearance(null, null).Contains("TaskbarAl"), "barra: 'Padrão' não mexe no alinhamento");
 
+// ---- Injeção de drivers (por modelo) ----
+var cfgDrv = new BuildConfig { UserName = "s", Password = "x", DriverPackPath = @"C:\tmp\drv", DriverModelName = "Latitude 5440" };
+var docDrv = UnattendGenerator.Generate(cfgDrv);
+Check(docDrv.Descendants(u + "settings").Any(s => (string?)s.Attribute("pass") == "offlineServicing"), "drivers: passe offlineServicing presente no autounattend");
+Check(docDrv.ToString().Contains("PnpCustomizationsNonWinPE") && docDrv.ToString().Contains(@"C:\Drivers"), "drivers: DriverPaths aponta para C:\\Drivers");
+var cmdDrv = InstallScriptGenerator.Generate(cfgDrv);
+Check(cmdDrv.Contains("pnputil /add-driver C:\\Drivers") && cmdDrv.Contains("/subdirs /install"), "drivers: install.cmd instala via pnputil (reforço) e limpa a pasta");
+Check(cmdDrv.Contains("rmdir /s /q C:\\Drivers"), "drivers: install.cmd remove C:\\Drivers após instalar (libera espaço)");
+var docNoDrv = UnattendGenerator.Generate(new BuildConfig { UserName = "s", Password = "x" });
+Check(!docNoDrv.Descendants(u + "settings").Any(s => (string?)s.Attribute("pass") == "offlineServicing"), "drivers: sem driver selecionado, sem passe offlineServicing");
+
+// ---- Seleção por componente (scanner de .inf) ----
+{
+    var pack = Path.Combine(outDir, "drvpack");
+    if (Directory.Exists(pack)) Directory.Delete(pack, true);
+    void Inf(string sub, string cls) { var d = Path.Combine(pack, sub); Directory.CreateDirectory(d); File.WriteAllText(Path.Combine(d, "x.inf"), $"[Version]\r\nClass={cls}\r\nClassGuid={{0}}\r\n"); File.WriteAllText(Path.Combine(d, "x.sys"), new string('x', 2048)); }
+    Inf("net", "Net"); Inf("gpu", "Display"); Inf("snd", "Media"); Inf("chip", "System");
+    var cats = DriverInfScanner.Scan(pack);
+    Check(cats.Any(c => c.Name == "Rede") && cats.Any(c => c.Name == "Vídeo") && cats.Any(c => c.Name == "Áudio") && cats.Any(c => c.Name == "Chipset / Sistema"), "drivers: scanner agrupa por categoria (Rede/Vídeo/Áudio/Chipset)");
+
+    var dest = Path.Combine(outDir, "drvsel");
+    if (Directory.Exists(dest)) Directory.Delete(dest, true);
+    DriverInfScanner.CopySelected(pack, new HashSet<string>(new[] { "Áudio", "Vídeo" }, StringComparer.OrdinalIgnoreCase), dest);
+    var infsCopiados = Directory.Exists(dest) ? Directory.GetFiles(dest, "*.inf", SearchOption.AllDirectories).Length : 0;
+    Check(infsCopiados == 2, "drivers: CopySelected exclui categorias desmarcadas (Áudio/Vídeo fora → sobram 2)");
+    Check(!Directory.Exists(Path.Combine(dest, "snd")) && Directory.Exists(Path.Combine(dest, "net")), "drivers: copia só as pastas das categorias marcadas");
+}
+
+// ---- Catálogo de componentes individuais (CatalogPC) ----
+{
+    var pcxml = Path.Combine(outDir, "catalogpc.xml");
+    File.WriteAllText(pcxml,
+        "<Manifest baseLocation=\"downloads.dell.com\">" +
+        "<SoftwareComponent path=\"a/net.EXE\" hashMD5=\"ABC\" size=\"1000\">" +
+        "<Name><Display>Realtek NIC</Display></Name><ComponentType value=\"DRVR\"/><Category value=\"NI\"><Display>Network</Display></Category>" +
+        "<SupportedOperatingSystems><OperatingSystem osCode=\"W21P4\"><Display>Windows 11</Display></OperatingSystem></SupportedOperatingSystems>" +
+        "<SupportedSystems><Brand><Display>Latitude</Display><Model systemID=\"0ABC\"><Display>5440</Display></Model></Brand></SupportedSystems></SoftwareComponent>" +
+        "<SoftwareComponent path=\"b/bios.EXE\" hashMD5=\"D\" size=\"2000\"><Name><Display>BIOS</Display></Name><ComponentType value=\"BIOS\"/>" +
+        "<SupportedOperatingSystems><OperatingSystem osCode=\"W21P4\"><Display>Windows 11</Display></OperatingSystem></SupportedOperatingSystems>" +
+        "<SupportedSystems><Brand><Display>Latitude</Display><Model systemID=\"0ABC\"/></Brand></SupportedSystems></SoftwareComponent>" +
+        "<SoftwareComponent path=\"c/old.EXE\" hashMD5=\"E\" size=\"3000\"><Name><Display>Old Net</Display></Name><ComponentType value=\"DRVR\"/><Category value=\"NI\"/>" +
+        "<SupportedOperatingSystems><OperatingSystem osCode=\"W10P4\"><Display>Windows 10 64-Bit</Display></OperatingSystem></SupportedOperatingSystems>" +
+        "<SupportedSystems><Brand><Display>Latitude</Display><Model systemID=\"0ABC\"/></Brand></SupportedSystems></SoftwareComponent>" +
+        "<SoftwareComponent path=\"d/arm.EXE\" hashMD5=\"F\" size=\"1500\"><Name><Display>ARM NIC</Display></Name><ComponentType value=\"DRVR\"/><Category value=\"NI\"/>" +
+        "<SupportedOperatingSystems><OperatingSystem osCode=\"W11AP\"><Display>Windows 11 ARM64</Display></OperatingSystem></SupportedOperatingSystems>" +
+        "<SupportedSystems><Brand><Display>Latitude</Display><Model systemID=\"0ABC\"/></Brand></SupportedSystems></SoftwareComponent>" +
+        "</Manifest>");
+    var comps = DellComponentCatalog.ParseComponents(pcxml);
+    Check(comps.Count == 1, "drivers ind.: parser pega só driver Win11 (ignora BIOS e Win10)");
+    Check(comps[0].Url == "https://downloads.dell.com/a/net.EXE" && comps[0].Category == "Rede", "drivers ind.: URL absoluta + categoria traduzida (NI→Rede)");
+    Check(comps[0].Models.Any(m => m.SystemId == "0ABC"), "drivers ind.: componente mapeado ao systemID do modelo");
+}
+
 // ---- Wi-Fi automático + gate de internet ----
 var cfgNet = new BuildConfig { UserName = "s", Password = "x", AutoConnectWifi = true, WifiSsid = "MinhaRede", WifiPassword = "segredo123", OfficeOffline = false };
 cfgNet.Apps.Add(new AppEntry { Name = "FortiClient", InstallerPath = @"C:\x\FortiClientVPNInstaller.exe", SilentArgs = "/quiet", RequiresInternet = true });

@@ -57,6 +57,7 @@ public static class InstallScriptGenerator
             sb.AppendLine();
         }
 
+        AppendDrivers(sb, c);
         AppendWifi(sb, c);
         AppendAppInstalls(sb, c);
         AppendAppearance(sb, c);
@@ -221,6 +222,23 @@ public static class InstallScriptGenerator
     {
         sb.AppendLine($"echo   {appName} precisa de internet; verificando conexao...>> \"%LOGFILE%\"");
         sb.AppendLine($"powershell -NoProfile -ExecutionPolicy Bypass -File \"{SetupDirOnDisk}\\{ExtraScriptsGenerator.WaitForInternetFileName}\">> \"%LOGFILE%\" 2>&1");
+    }
+
+    /// <summary>
+    /// Instala os drivers do fabricante no 1º logon (reforço ao offlineServicing) e limpa a pasta.
+    /// Os .inf estão em C:\Drivers (copiados via sources\$OEM$\$1\Drivers).
+    /// </summary>
+    internal static void AppendDrivers(StringBuilder sb, BuildConfig c)
+    {
+        if (string.IsNullOrWhiteSpace(c.DriverPackPath)) return;
+        sb.AppendLine("if exist \"C:\\Drivers\" (");
+        sb.AppendLine("  echo [Drivers] instalando drivers do fabricante...>> \"%LOGFILE%\"");
+        sb.AppendLine("  echo Instalando drivers do fabricante...");
+        sb.AppendLine("  pnputil /add-driver C:\\Drivers\\*.inf /subdirs /install>> \"%LOGFILE%\" 2>&1");
+        sb.AppendLine("  echo   codigo de saida: %errorlevel%>> \"%LOGFILE%\"");
+        sb.AppendLine("  rmdir /s /q C:\\Drivers");   // ja estao no DriverStore; libera o espaco
+        sb.AppendLine(")");
+        sb.AppendLine();
     }
 
     /// <summary>Conecta automaticamente a uma rede Wi-Fi (perfil WLAN + netsh) no início do 1º logon.</summary>

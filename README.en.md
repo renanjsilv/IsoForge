@@ -57,6 +57,12 @@ few-clicks, from-scratch install.
 - **Windows light or dark theme** — sets the apps/system theme at first logon and for new users.
 - **Taskbar alignment** — center (Windows 11 default) or left (classic style), applied at
   first logon and for new users.
+- **Per-model driver injection (Dell)** — dedicated tab. Search the model in Dell's official
+  catalog and choose:
+  - **Full pack** — downloads the whole model pack; you tick which components to inject.
+  - **Individual drivers** — downloads **only** the drivers you tick (saves bandwidth), via
+    Dell's individual update packages (DUP).
+  Injection is done on the ISO via `autounattend` (offlineServicing) + `pnputil`.
 - **Automatic disk selection (optional)** — in WinPE it picks the first fixed disk that is
   **not the USB stick**, partitions it and installs unattended. Falls back to manual if no
   safe disk is found.
@@ -68,6 +74,9 @@ few-clicks, from-scratch install.
   applies immediately).
 - **Skip Wi‑Fi in OOBE**, **hardware-requirement bypass** (TPM/Secure Boot/RAM/CPU),
   **edition key**, **pt‑BR language + ABNT2 keyboard**.
+  > The edition keys are Microsoft's **public generic keys** (KMS client setup keys): they only
+  > **select the edition** during setup, they do **not activate** Windows and don't replace a
+  > license. It's an official deployment feature — activation is done with your own license/KMS.
 - **Golden image (Hyper‑V)** — optionally builds an image with everything pre-installed.
 - **Test in Windows Sandbox** — one click installs the apps in a disposable Windows copy
   (just like the VM), with no risk to your machine.

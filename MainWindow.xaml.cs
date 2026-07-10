@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,6 +17,13 @@ public partial class MainWindow : Window
     BuildConfig _config = new();
     readonly InstallerFetcher _fetcher = new();
     readonly ConcurrentDictionary<AppId, FetchResult> _fetched = new();
+    readonly DellDriverCatalog _driverCatalog = new();
+    readonly DellComponentCatalog _componentCatalog = new();
+    List<DellDriverModel> _dellModels = new();
+    List<DellModelRef> _componentModels = new();
+    readonly ObservableCollection<DriverCategoryVm> _driverCategories = new();
+    readonly ObservableCollection<DriverItemVm> _individualDrivers = new();
+    bool DriverIndividualMode => RbDrvIndividual?.IsChecked == true;
     CancellationTokenSource? _cts;
     bool _syncingCards;
 
@@ -30,6 +38,8 @@ public partial class MainWindow : Window
 
         GridVpn.ItemsSource = _config.VpnTunnels;
         GridUnits.ItemsSource = _config.Units;
+        LstDriverCategories.ItemsSource = _driverCategories;
+        LstIndividualDrivers.ItemsSource = _individualDrivers;
 
         ApplyConfigToUi();
         RefreshProfiles();
@@ -46,8 +56,7 @@ public partial class MainWindow : Window
         var bundled = Oscdimg.ExtractBundled();
         if (bundled != null)
         {
-            TxtOscdimg.Text = bundled;
-            AppendLog("oscdimg.exe embutido no IsoForge — nada para baixar ou instalar.");
+            TxtOscdimg.Text = bundled; // embutido no IsoForge; sem log (é interno)
         }
         else
         {
@@ -353,6 +362,269 @@ public partial class MainWindow : Window
     {
         if (PanelWifi == null) return;
         PanelWifi.IsEnabled = ChkAutoWifi.IsChecked == true;
+    }
+
+    // ------------------------------------------------------------------
+    // Drivers do fabricante (injeção por modelo) — Dell
+    // ------------------------------------------------------------------
+    bool _drvSelecting;
+    bool _driverModelsLoading;
+    string _pendingModelLabel = "";
+
+    // Carrega os modelos automaticamente ao entrar na aba Drivers.
+    void MainTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source is not TabControl) return; // ignora SelectionChanged de listas/combos internos
+        if ((MainTabs.SelectedItem as TabItem)?.Header as string == "Drivers")
+            _ = LoadDriverModelsAsync(force: false);
+    }
+
+    void ShowModelList()
+    {
+        DriverPickPanel.Visibility = Visibility.Collapsed;
+        LstDriverModels.Visibility = Visibility.Visible;
+        PanelDriverSearch.Visibility = Visibility.Visible;
+    }
+
+    void DriverMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (TxtDriverModeHint == null) return;
+        bool indiv = DriverIndividualMode;
+        TxtDriverModeHint.Text = indiv
+            ? "Drivers individuais: escolha o modelo e marque só os drivers que quer (baixa MBs). Extrai via o instalador assinado da Dell (pede UAC 1x)."
+            : "Pack completo: baixa tudo do modelo de uma vez (GBs), sem executar nada. Garantido.";
+        BtnDriverDownload.Content = indiv ? "Baixar selecionados" : "Baixar pack deste modelo";
+        // Troca de modo: volta a escolher modelo e limpa (os catálogos são diferentes).
+        _dellModels = new(); _componentModels = new(); _individualDrivers.Clear();
+        _drvSelecting = true; LstDriverModels.ItemsSource = null; _drvSelecting = false;
+        ShowModelList();
+        TxtDriverSearch.IsEnabled = false;
+        BtnDriverDownload.IsEnabled = false;
+        DriverComponentsCard.Visibility = Visibility.Collapsed;
+        _ = LoadDriverModelsAsync(force: false); // carrega os modelos do novo modo automaticamente
+    }
+
+    // Botão "Recarregar" força a releitura do catálogo.
+    async void LoadDrivers_Click(object sender, RoutedEventArgs e) => await LoadDriverModelsAsync(force: true);
+
+    // Carrega os modelos do modo atual. force=true releitura; force=false só se ainda não tem.
+    async Task LoadDriverModelsAsync(bool force)
+    {
+        if (_driverModelsLoading) return;
+        bool have = DriverIndividualMode ? _componentModels.Count > 0 : _dellModels.Count > 0;
+        if (have && !force)
+        {
+            // já carregado: só garante a lista utilizável (sem mexer se estiver escolhendo drivers).
+            if (TxtDriverSearch != null && DriverPickPanel.Visibility != Visibility.Visible)
+                TxtDriverSearch.IsEnabled = true;
+            return;
+        }
+        if (force) { _dellModels = new(); _componentModels = new(); }
+
+        _driverModelsLoading = true;
+        SetBusy(true);
+        var progress = new Progress<string>(AppendLog);
+        try
+        {
+            if (DriverIndividualMode)
+            {
+                await _componentCatalog.EnsureLoadedAsync(progress, CancellationToken.None);
+                _componentModels = _componentCatalog.Models();
+                AppendLog($"{_componentModels.Count} modelos Dell (Windows 11 x64) com drivers individuais.");
+            }
+            else
+            {
+                AppendLog("Carregando catálogo de drivers da Dell...");
+                _dellModels = await Task.Run(() => _driverCatalog.FetchModelsAsync(progress, CancellationToken.None));
+                AppendLog($"{_dellModels.Count} modelos Dell (Windows 11 x64) carregados.");
+            }
+            ShowModelList();
+            TxtDriverSearch.IsEnabled = true;
+            BtnDriverDownload.IsEnabled = false; // habilita ao selecionar um modelo
+            FilterDriverModels();
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"ERRO ao carregar catálogo de drivers: {ex.Message}");
+        }
+        finally { SetBusy(false); _driverModelsLoading = false; }
+    }
+
+    void DriverSearch_Changed(object sender, TextChangedEventArgs e) => FilterDriverModels();
+
+    void FilterDriverModels()
+    {
+        if (LstDriverModels == null) return;
+        _drvSelecting = true;
+        var q = TxtDriverSearch.Text?.Trim() ?? "";
+        if (DriverIndividualMode)
+        {
+            IEnumerable<DellModelRef> items = _componentModels;
+            if (q.Length > 0) items = _componentModels.Where(m => m.Name.Contains(q, StringComparison.OrdinalIgnoreCase));
+            LstDriverModels.DisplayMemberPath = "Name";
+            LstDriverModels.ItemsSource = items.Take(300).ToList();
+        }
+        else
+        {
+            IEnumerable<DellDriverModel> items = _dellModels;
+            if (q.Length > 0) items = _dellModels.Where(m => m.Label.Contains(q, StringComparison.OrdinalIgnoreCase));
+            LstDriverModels.DisplayMemberPath = "Label";
+            LstDriverModels.ItemsSource = items.Take(300).ToList();
+        }
+        _drvSelecting = false;
+        BtnDriverDownload.IsEnabled = false; // refiltrou -> sem seleção
+    }
+
+    // Clicar num modelo: pack só habilita o botão; individual mostra os drivers NA MESMA caixa.
+    void DriverModel_Selected(object sender, SelectionChangedEventArgs e)
+    {
+        if (_drvSelecting || LstDriverModels.SelectedItem == null) return;
+
+        if (!DriverIndividualMode)
+        {
+            BtnDriverDownload.IsEnabled = LstDriverModels.SelectedItem is DellDriverModel;
+            return;
+        }
+
+        if (LstDriverModels.SelectedItem is not DellModelRef m) return;
+        var drivers = _componentCatalog.DriversForName(m.Name);
+        _individualDrivers.Clear();
+        foreach (var d in drivers)
+            _individualDrivers.Add(new DriverItemVm { Name = d.Name, Detail = $"  [{d.Category} · {d.SizeText}]", Include = false, Driver = d });
+        _pendingModelLabel = m.Name;
+        if (_individualDrivers.Count == 0)
+        {
+            MessageBox.Show(this, $"Não achei drivers individuais para {m.Name}. Tente o modo 'Pack completo'.",
+                "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        TxtPickTitle.Text = $"{m.Name} — marque os drivers:";
+        LstDriverModels.Visibility = Visibility.Collapsed;
+        PanelDriverSearch.Visibility = Visibility.Collapsed;
+        DriverPickPanel.Visibility = Visibility.Visible;
+        BtnDriverDownload.IsEnabled = true;
+        AppendLog($"{_individualDrivers.Count} drivers individuais para {m.Name}.");
+    }
+
+    void DriverBack_Click(object sender, RoutedEventArgs e)
+    {
+        _individualDrivers.Clear();
+        _drvSelecting = true; LstDriverModels.SelectedItem = null; _drvSelecting = false;
+        ShowModelList();
+        BtnDriverDownload.IsEnabled = false;
+    }
+
+    void IndivSelectAll_Click(object sender, RoutedEventArgs e) => SetAllIndividual(true);
+    void IndivSelectNone_Click(object sender, RoutedEventArgs e) => SetAllIndividual(false);
+    void SetAllIndividual(bool include)
+    {
+        var snap = _individualDrivers.ToList();
+        _individualDrivers.Clear();
+        foreach (var d in snap) { d.Include = include; _individualDrivers.Add(d); }
+    }
+
+    // CTA: pack baixa o pack inteiro; individual baixa só os drivers marcados.
+    async void DownloadDriver_Click(object sender, RoutedEventArgs e)
+    {
+        if (DriverIndividualMode)
+        {
+            var chosen = _individualDrivers.Where(d => d.Include).Select(d => d.Driver).ToList();
+            if (chosen.Count == 0)
+            {
+                MessageBox.Show(this, "Marque ao menos um driver.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            SetBusy(true);
+            var prog = new Progress<string>(AppendLog);
+            var pc = PercentTo("Baixando drivers selecionados");
+            try
+            {
+                var folder = await _componentCatalog.DownloadAndExtractAsync(chosen, _pendingModelLabel, prog, pc, CancellationToken.None);
+                _config.DriverPackPath = folder;
+                _config.DriverModelName = $"{_pendingModelLabel} ({chosen.Count} driver(s))";
+                _config.DriverExcludedCategories = new();
+                TxtDriverStatus.Text = $"Drivers prontos: {_config.DriverModelName}. Serão injetados na ISO.";
+                AppendLog($"Drivers individuais prontos em: {folder}");
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"ERRO ao baixar drivers: {ex.Message}");
+                MessageBox.Show(this, $"Falha ao baixar/extrair os drivers.\n\n{ex.Message}", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            finally { SetBusy(false); }
+            return;
+        }
+
+        if (LstDriverModels.SelectedItem is not DellDriverModel model)
+        {
+            MessageBox.Show(this, "Selecione um modelo na lista primeiro.", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        SetBusy(true);
+        var progress = new Progress<string>(AppendLog);
+        var percent = PercentTo($"Baixando driver {model.Label}");
+        try
+        {
+            var folder = await Task.Run(() => _driverCatalog.DownloadAndExtractAsync(model, progress, percent, CancellationToken.None));
+            _config.DriverPackPath = folder;
+            _config.DriverModelName = model.Label;
+            _config.DriverExcludedCategories = new();
+            TxtDriverStatus.Text = $"Driver pronto: {model.Label} ({model.SizeText}). Escolha os componentes abaixo.";
+            AppendLog($"Driver do modelo {model.Label} baixado e extraído em: {folder}");
+            await RefreshDriverCategoriesAsync(null);
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"ERRO ao baixar driver: {ex.Message}");
+            MessageBox.Show(this, $"Falha ao baixar/extrair o driver.\n\n{ex.Message}", "IsoForge", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        finally { SetBusy(false); }
+    }
+
+    void ClearDriver_Click(object sender, RoutedEventArgs e)
+    {
+        _config.DriverPackPath = "";
+        _config.DriverModelName = "";
+        _config.DriverExcludedCategories = new();
+        _drvSelecting = true; LstDriverModels.SelectedItem = null; _drvSelecting = false;
+        _driverCategories.Clear();
+        _individualDrivers.Clear();
+        DriverComponentsCard.Visibility = Visibility.Collapsed;
+        ShowModelList();
+        BtnDriverDownload.IsEnabled = false;
+        TxtDriverStatus.Text = "Nenhum driver selecionado.";
+    }
+
+    // Lê as categorias (Rede, Vídeo…) do pack extraído e mostra os checkboxes.
+    async Task RefreshDriverCategoriesAsync(ISet<string>? excluded)
+    {
+        _driverCategories.Clear();
+        if (string.IsNullOrWhiteSpace(_config.DriverPackPath) || !Directory.Exists(_config.DriverPackPath))
+        {
+            DriverComponentsCard.Visibility = Visibility.Collapsed;
+            return;
+        }
+        var path = _config.DriverPackPath;
+        var cats = await Task.Run(() => DriverInfScanner.Scan(path));
+        foreach (var c in cats)
+            _driverCategories.Add(new DriverCategoryVm
+            {
+                Name = c.Name,
+                Detail = $"  ({c.Count}) — {c.SizeText}",
+                Include = excluded == null || !excluded.Contains(c.Name)
+            });
+        DriverComponentsCard.Visibility = cats.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void DriverSelectAll_Click(object sender, RoutedEventArgs e) => SetAllDriverCategories(true);
+    void DriverSelectNone_Click(object sender, RoutedEventArgs e) => SetAllDriverCategories(false);
+
+    void SetAllDriverCategories(bool include)
+    {
+        // Recria a coleção para o ItemsControl refletir a mudança (VM sem INotifyPropertyChanged).
+        var snapshot = _driverCategories.ToList();
+        _driverCategories.Clear();
+        foreach (var c in snapshot) { c.Include = include; _driverCategories.Add(c); }
     }
 
     void OfficeLang_Changed(object sender, SelectionChangedEventArgs e)
@@ -712,6 +984,13 @@ public partial class MainWindow : Window
         _config.WifiSsid = TxtWifiSsid.Text.Trim();
         _config.WifiPassword = TxtWifiPassword.Text;
 
+        // Driver: se a pasta local extraída não existe mais, não injeta (evita apontar p/ C:\Drivers vazio).
+        if (!string.IsNullOrWhiteSpace(_config.DriverPackPath) && !Directory.Exists(_config.DriverPackPath))
+            _config.DriverPackPath = "";
+        // Categorias desmarcadas viram a lista de exclusão da injeção.
+        if (_driverCategories.Count > 0)
+            _config.DriverExcludedCategories = _driverCategories.Where(c => !c.Include).Select(c => c.Name).ToList();
+
         _config.Mode = RbModeEntra.IsChecked == true ? DeploymentMode.EntraId : DeploymentMode.LocalAccount;
         _config.DemoteEntraJoiner = ChkDemoteEntra.IsChecked == true;
 
@@ -772,6 +1051,16 @@ public partial class MainWindow : Window
         TxtWifiSsid.Text = _config.WifiSsid;
         TxtWifiPassword.Text = _config.WifiPassword;
         PanelWifi.IsEnabled = _config.AutoConnectWifi;
+
+        if (!string.IsNullOrWhiteSpace(_config.DriverModelName))
+        {
+            TxtDriverStatus.Text = Directory.Exists(_config.DriverPackPath)
+                ? $"Driver pronto: {_config.DriverModelName}. Escolha os componentes abaixo."
+                : $"Driver do modelo {_config.DriverModelName} precisa ser baixado de novo (arquivos locais removidos).";
+            // Reconstrói as categorias em segundo plano (aplica as exclusões salvas).
+            if (Directory.Exists(_config.DriverPackPath))
+                _ = RefreshDriverCategoriesAsync(new HashSet<string>(_config.DriverExcludedCategories, StringComparer.OrdinalIgnoreCase));
+        }
 
         RbModeEntra.IsChecked = _config.Mode == DeploymentMode.EntraId;
         RbModeLocal.IsChecked = _config.Mode != DeploymentMode.EntraId;

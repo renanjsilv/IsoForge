@@ -77,7 +77,7 @@
         </Border>
 
         <!-- ============ NAVEGAÇÃO + CONTEÚDO ============ -->
-        <TabControl x:Name="MainTabs" Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1">
+        <TabControl x:Name="MainTabs" Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" SelectionChanged="MainTabs_SelectionChanged">
             <TabControl.Resources>
                 <Style TargetType="ScrollViewer">
                     <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
@@ -222,6 +222,7 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
                                     <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
                                 </Grid.RowDefinitions>
 
                                 <TextBlock Text="Edição (chave):" VerticalAlignment="Center"/>
@@ -233,9 +234,15 @@
                                     <ComboBoxItem Content="Chave personalizada..." Tag="custom"/>
                                 </ComboBox>
                                 <TextBox x:Name="TxtProductKey" Grid.Column="3" Margin="16,4,0,4" IsEnabled="False"
-                                         ToolTip="Chave do produto (seleciona a edição; a ativação ocorre depois normalmente)"/>
+                                         ToolTip="Cole aqui a SUA chave/licença para ativação. As chaves da lista são genéricas (só escolhem a edição)."/>
 
-                                <CheckBox x:Name="ChkBypass" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0"
+                                <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1"
+                                        CornerRadius="8" Padding="10,8" Margin="0,4,0,0">
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#1E3A8A"
+                                               Text="As chaves das edições acima são as chaves genéricas públicas da Microsoft (KMS client setup keys), usadas apenas para SELECIONAR a edição durante a instalação. Elas NÃO ativam o Windows e não substituem uma licença — a ativação é feita depois com a sua licença ou KMS. É um recurso oficial de implantação da Microsoft (documentado), não pirataria. Para ativar, escolha 'Chave personalizada' e informe a sua licença."/>
+                                </Border>
+
+                                <CheckBox x:Name="ChkBypass" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0"
                                           Content="Ignorar requisitos de hardware (TPM 2.0, Secure Boot, RAM, CPU) — recomendado para VM"
                                           IsChecked="True"/>
                             </Grid>
@@ -382,6 +389,105 @@
                                     <TextBlock Text="Senha:" VerticalAlignment="Center" Margin="16,0,6,0"/>
                                     <TextBox x:Name="TxtXauthPass" Width="160" VerticalAlignment="Center"/>
                                 </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ DRIVERS ============ -->
+            <TabItem Header="Drivers" Tag="&#xE950;">
+                <ScrollViewer>
+                    <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
+                        <GroupBox Header="Drivers do fabricante (injeção automática por modelo)">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,12"
+                                           Text="Baixa os drivers oficiais do modelo (rede, chipset, vídeo…) e injeta na ISO, para a máquina já subir com tudo funcionando. Modelos corporativos (Latitude, OptiPlex, Precision, XPS, Dell Pro)."/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Modo:" Width="90" VerticalAlignment="Center"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton x:Name="RbDrvPack" Style="{StaticResource Segment}" GroupName="DrvMode"
+                                                     Content="Pack completo" IsChecked="True" Checked="DriverMode_Changed"/>
+                                        <RadioButton x:Name="RbDrvIndividual" Style="{StaticResource Segment}" GroupName="DrvMode"
+                                                     Content="Drivers individuais" Checked="DriverMode_Changed"/>
+                                    </StackPanel>
+                                </DockPanel>
+                                <TextBlock x:Name="TxtDriverModeHint" Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Pack completo: baixa tudo do modelo de uma vez (GBs), sem executar nada. Garantido."/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Fabricante:" Width="90" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbDriverVendor" Width="140" Height="34" HorizontalAlignment="Left">
+                                        <ComboBoxItem Content="Dell" IsSelected="True"/>
+                                    </ComboBox>
+                                    <Button DockPanel.Dock="Right" Content="Recarregar" Style="{StaticResource Secondary}"
+                                            HorizontalAlignment="Right" Click="LoadDrivers_Click"
+                                            ToolTip="Recarrega a lista de modelos do catálogo da Dell."/>
+                                </DockPanel>
+                                <DockPanel x:Name="PanelDriverSearch" Margin="0,0,0,6">
+                                    <TextBlock Text="Modelo:" Width="90" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtDriverSearch" IsEnabled="False" TextChanged="DriverSearch_Changed"
+                                             ToolTip="Digite parte do nome do modelo (ex.: Latitude 5440)"/>
+                                </DockPanel>
+
+                                <!-- Área única: lista de modelos OU, no modo individual, os drivers do modelo escolhido. -->
+                                <Grid Margin="0,0,0,8">
+                                    <ListBox x:Name="LstDriverModels" Height="210" SelectionChanged="DriverModel_Selected"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                                    <StackPanel x:Name="DriverPickPanel" Visibility="Collapsed">
+                                        <DockPanel Margin="0,0,0,6">
+                                            <Button DockPanel.Dock="Left" Content="‹ Voltar" Style="{StaticResource Secondary}" Padding="10,6" Click="DriverBack_Click"/>
+                                            <Button DockPanel.Dock="Right" Content="Todos" Style="{StaticResource Secondary}" Padding="10,6" Margin="8,0,0,0" Click="IndivSelectAll_Click"/>
+                                            <Button DockPanel.Dock="Right" Content="Nenhum" Style="{StaticResource Secondary}" Padding="10,6" Click="IndivSelectNone_Click"/>
+                                            <TextBlock x:Name="TxtPickTitle" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                        <ListBox x:Name="LstIndividualDrivers" Height="176" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                 HorizontalContentAlignment="Stretch">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding Include, Mode=TwoWay}" Margin="0,3,0,0">
+                                                        <TextBlock TextWrapping="Wrap">
+                                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                            <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
+                                                        </TextBlock>
+                                                    </CheckBox>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <DockPanel>
+                                    <Button x:Name="BtnDriverDownload" DockPanel.Dock="Left" Content="Baixar pack deste modelo"
+                                            Style="{StaticResource Cta}" IsEnabled="False" Click="DownloadDriver_Click"/>
+                                    <Button x:Name="BtnDriverClear" DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}"
+                                            HorizontalAlignment="Right" Click="ClearDriver_Click"/>
+                                    <TextBlock x:Name="TxtDriverStatus" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextMuted}" FontSize="12.5" Text="Nenhum driver selecionado."/>
+                                </DockPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="DriverComponentsCard" Header="Componentes a instalar" Visibility="Collapsed">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap"
+                                               Text="Marque só o que quer injetar (ex.: apenas Rede). Por padrão, tudo vem marcado."/>
+                                    <Button DockPanel.Dock="Right" Content="Todos" Style="{StaticResource Secondary}" Padding="10,6" Margin="8,0,0,0" Click="DriverSelectAll_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Nenhum" Style="{StaticResource Secondary}" Padding="10,6" Click="DriverSelectNone_Click"/>
+                                </DockPanel>
+                                <ItemsControl x:Name="LstDriverCategories">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding Include, Mode=TwoWay}" Margin="0,4,0,0">
+                                                <TextBlock>
+                                                    <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                    <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
+                                                </TextBlock>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </StackPanel>
                         </GroupBox>
                     </StackPanel>

@@ -33,6 +33,7 @@ public static class UnattendGenerator
         var root = new XElement(U + "unattend",
             new XAttribute(XNamespace.Xmlns + "wcm", Wcm.NamespaceName),
             SettingsWindowsPe(c),
+            SettingsOfflineServicing(c),
             SettingsSpecialize(c),
             SettingsAuditUser(c),
             SettingsOobe(c));
@@ -159,6 +160,24 @@ public static class UnattendGenerator
                     Modify(1, 1, format: "FAT32", label: "System"),
                     Modify(2, 2),
                     Modify(3, 3, format: "NTFS", label: "Windows", letter: "C"))));
+    }
+
+    /// <summary>
+    /// Passe offlineServicing: injeta os drivers do fabricante (por modelo) na imagem antes
+    /// do 1º boot. Os .inf ficam em C:\Drivers (copiados via sources\$OEM$\$1\Drivers).
+    /// </summary>
+    static XElement? SettingsOfflineServicing(BuildConfig c)
+    {
+        if (string.IsNullOrWhiteSpace(c.DriverPackPath)) return null;
+
+        var pnp = Component("Microsoft-Windows-PnpCustomizationsNonWinPE",
+            new XElement(U + "DriverPaths",
+                new XElement(U + "PathAndCredentials",
+                    new XAttribute(Wcm + "action", "add"),
+                    new XAttribute(Wcm + "keyValue", "1"),
+                    new XElement(U + "Path", @"C:\Drivers"))));
+
+        return new XElement(U + "settings", new XAttribute("pass", "offlineServicing"), pnp);
     }
 
     static XElement? SettingsSpecialize(BuildConfig c)

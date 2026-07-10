@@ -113,6 +113,13 @@ public class BuildConfig
     public string WifiSsid { get; set; } = "";
     public string WifiPassword { get; set; } = "";
 
+    // Injeção de drivers do fabricante (por modelo). DriverPackPath = pasta local com os .inf
+    // extraídos; injetada na ISO (autounattend offlineServicing + pnputil no 1º logon).
+    public string DriverPackPath { get; set; } = "";
+    public string DriverModelName { get; set; } = ""; // rótulo do modelo, só para exibição/log
+    // Categorias de driver a NÃO injetar (ex.: "Áudio"). Vazio = injeta todas as do pack.
+    public List<string> DriverExcludedCategories { get; set; } = new();
+
     // Modo de implantação (comportamento do 1º boot)
     public DeploymentMode Mode { get; set; } = DeploymentMode.LocalAccount;
 

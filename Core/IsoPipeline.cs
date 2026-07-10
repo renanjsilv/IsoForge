@@ -476,6 +476,18 @@ public class IsoPipeline
             Log("Instalação com apps que precisam de internet: WaitForInternet.ps1 incluído (espera conexão e continua sozinho).");
         }
 
+        // 4d. Drivers do fabricante: copia os .inf para sources\$OEM$\$1\Drivers (=> C:\Drivers no
+        // destino). O autounattend (offlineServicing) + pnputil no 1º logon fazem a injeção.
+        if (!string.IsNullOrWhiteSpace(cfg.DriverPackPath) && Directory.Exists(cfg.DriverPackPath))
+        {
+            var driversDest = Path.Combine(staging, "sources", "$OEM$", "$1", "Drivers");
+            var excluded = new HashSet<string>(cfg.DriverExcludedCategories, StringComparer.OrdinalIgnoreCase);
+            var quais = excluded.Count == 0 ? "todos os componentes" : $"exceto: {string.Join(", ", excluded)}";
+            Log($"Copiando drivers do fabricante ({cfg.DriverModelName}) — {quais}...");
+            long bytes = DriverInfScanner.CopySelected(cfg.DriverPackPath, excluded, driversDest);
+            Log($"Drivers incluídos ({cfg.DriverModelName}): {bytes / 1024 / 1024} MB → C:\\Drivers no 1º boot.");
+        }
+
         // 5. Seleção de unidade (1º logon sem auditoria, ou modo de auditoria)
         if (cfg.UseUnitSelection)
         {

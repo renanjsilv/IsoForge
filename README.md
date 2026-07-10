@@ -59,6 +59,13 @@ do zero, com o mínimo de cliques.
   logon e para novos usuários.
 - **Alinhamento da barra de tarefas** — centro (padrão do Windows 11) ou à esquerda
   (estilo clássico), aplicado no 1º logon e para novos usuários.
+- **Injeção de drivers por modelo (Dell)** — aba dedicada. Busque o modelo no catálogo oficial
+  da Dell e escolha:
+  - **Pack completo** — baixa tudo do modelo e você marca quais componentes injetar.
+  - **Drivers individuais** — baixa **só** os drivers que você marcar (economiza banda), via os
+    pacotes individuais (DUP) da Dell.
+  A injeção é feita na ISO via `autounattend` (offlineServicing) + `pnputil`, pra máquina já
+  subir com tudo funcionando.
 - **Seleção de disco automática (opcional)** — no WinPE escolhe o 1º disco fixo **que não
   seja o pendrive**, particiona e instala sozinho. Se não houver disco seguro, volta à
   seleção manual.
@@ -71,6 +78,9 @@ do zero, com o mínimo de cliques.
   preta e aplicar de imediato).
 - **Pular WiFi no OOBE**, **bypass de requisitos** (TPM/Secure Boot/RAM/CPU), **chave de
   edição**, **idioma pt‑BR + ABNT2**.
+  > As chaves de edição são as **chaves genéricas públicas da Microsoft** (KMS client setup keys):
+  > servem só para **selecionar a edição** na instalação, **não ativam** o Windows nem substituem
+  > uma licença. É um recurso oficial de implantação — a ativação é feita com a sua licença/KMS.
 - **Imagem golden (Hyper‑V)** — opcionalmente gera uma imagem com tudo pré‑instalado.
 - **Teste no Windows Sandbox** — um clique instala os apps numa cópia descartável do
   Windows (igual à VM), sem risco à sua máquina.

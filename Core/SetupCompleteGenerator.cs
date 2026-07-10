@@ -46,6 +46,7 @@ public static class SetupCompleteGenerator
         }
 
         // 2) Aplicativos, aparência e VPN (mesmos helpers do install.cmd)
+        InstallScriptGenerator.AppendDrivers(sb, c);
         InstallScriptGenerator.AppendWifi(sb, c);
         InstallScriptGenerator.AppendAppInstalls(sb, c);
         InstallScriptGenerator.AppendAppearance(sb, c);
