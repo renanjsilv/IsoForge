@@ -57,6 +57,8 @@ do zero, com o mínimo de cliques.
   progresso geral (e no título da janela).
 - **Tema claro ou escuro do Windows** — define o tema de aplicativos e do sistema no 1º
   logon e para novos usuários.
+- **Alinhamento da barra de tarefas** — centro (padrão do Windows 11) ou à esquerda
+  (estilo clássico), aplicado no 1º logon e para novos usuários.
 - **Seleção de disco automática (opcional)** — no WinPE escolhe o 1º disco fixo **que não
   seja o pendrive**, particiona e instala sozinho. Se não houver disco seguro, volta à
   seleção manual.

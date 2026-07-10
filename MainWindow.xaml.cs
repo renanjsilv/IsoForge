@@ -740,6 +740,9 @@ public partial class MainWindow : Window
         _config.WindowsTheme = RbThemeLight.IsChecked == true ? WindowsThemeMode.Light
             : RbThemeDark.IsChecked == true ? WindowsThemeMode.Dark
             : WindowsThemeMode.Default;
+        _config.TaskbarAlign = RbTaskbarCenter.IsChecked == true ? TaskbarAlignment.Center
+            : RbTaskbarLeft.IsChecked == true ? TaskbarAlignment.Left
+            : TaskbarAlignment.Default;
         _config.FortiClientRegImportPath = TxtFortiReg.Text.Trim();
         _config.VpnUseTextImport = ChkVpnTextImport.IsChecked == true;
         _config.VpnXAuth = RbXauthSave.IsChecked == true ? VpnXAuthMode.Save
@@ -810,6 +813,9 @@ public partial class MainWindow : Window
         RbThemeLight.IsChecked = _config.WindowsTheme == WindowsThemeMode.Light;
         RbThemeDark.IsChecked = _config.WindowsTheme == WindowsThemeMode.Dark;
         RbThemeDefault.IsChecked = _config.WindowsTheme == WindowsThemeMode.Default;
+        RbTaskbarCenter.IsChecked = _config.TaskbarAlign == TaskbarAlignment.Center;
+        RbTaskbarLeft.IsChecked = _config.TaskbarAlign == TaskbarAlignment.Left;
+        RbTaskbarDefault.IsChecked = _config.TaskbarAlign == TaskbarAlignment.Default;
         TxtFortiReg.Text = _config.FortiClientRegImportPath;
         ChkVpnTextImport.IsChecked = _config.VpnUseTextImport;
         RbXauthSave.IsChecked = _config.VpnXAuth == VpnXAuthMode.Save;

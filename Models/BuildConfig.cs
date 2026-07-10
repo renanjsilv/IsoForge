@@ -20,6 +20,17 @@ public enum WindowsThemeMode
     Dark
 }
 
+/// <summary>Alinhamento dos ícones da barra de tarefas do Windows 11.</summary>
+public enum TaskbarAlignment
+{
+    /// <summary>Não altera (mantém o padrão do Windows: centralizado).</summary>
+    Default,
+    /// <summary>Centralizado (padrão do Windows 11).</summary>
+    Center,
+    /// <summary>Alinhado à esquerda (estilo clássico).</summary>
+    Left
+}
+
 /// <summary>Quando a tela de seleção de unidade aparece.</summary>
 public enum UnitSelectionMethod
 {
@@ -139,6 +150,8 @@ public class BuildConfig
     public string LockScreenPath { get; set; } = "";       // imagem da tela de bloqueio / login
     // Tema padrão do Windows (claro/escuro) aplicado no 1º logon e para novos usuários.
     public WindowsThemeMode WindowsTheme { get; set; } = WindowsThemeMode.Default;
+    // Alinhamento da barra de tarefas (centro/esquerda) aplicado no 1º logon e para novos usuários.
+    public TaskbarAlignment TaskbarAlign { get; set; } = TaskbarAlignment.Default;
 
     // FortiClient VPN — vazio por padrão; adicione os seus túneis (ficam salvos localmente).
     public ObservableCollection<VpnTunnel> VpnTunnels { get; set; } = new();

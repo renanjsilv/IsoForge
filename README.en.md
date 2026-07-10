@@ -55,6 +55,8 @@ few-clicks, from-scratch install.
 - **Install progress** — the first-logon window shows "program X of N" + an overall progress
   bar (and in the window title).
 - **Windows light or dark theme** — sets the apps/system theme at first logon and for new users.
+- **Taskbar alignment** — center (Windows 11 default) or left (classic style), applied at
+  first logon and for new users.
 - **Automatic disk selection (optional)** — in WinPE it picks the first fixed disk that is
   **not the USB stick**, partitions it and installs unattended. Falls back to manual if no
   safe disk is found.

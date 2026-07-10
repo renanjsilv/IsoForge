@@ -411,6 +411,23 @@
                                 </Grid>
                                 <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
                                            Text="Define o tema de aplicativos e do sistema no primeiro logon (e para novos usuários). 'Padrão do Windows' não altera nada."/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Alinhamento da barra de tarefas:" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="RbTaskbarDefault" Style="{StaticResource Segment}" GroupName="TaskbarAl"
+                                                     Content="Padrão do Windows" IsChecked="True"/>
+                                        <RadioButton x:Name="RbTaskbarCenter" Style="{StaticResource Segment}" GroupName="TaskbarAl"
+                                                     Content="Centro"/>
+                                        <RadioButton x:Name="RbTaskbarLeft" Style="{StaticResource Segment}" GroupName="TaskbarAl"
+                                                     Content="Esquerda"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
+                                           Text="Posição dos ícones da barra de tarefas no primeiro logon (e para novos usuários). 'Padrão do Windows' não altera nada."/>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Papel de parede:" Width="150" VerticalAlignment="Center"/>
                                     <Button DockPanel.Dock="Right" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseWallpaper_Click"/>

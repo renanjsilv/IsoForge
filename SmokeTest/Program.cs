@@ -76,6 +76,14 @@ Check(cmd.Contains("_MSIExecute"), "install.cmd espera o Windows Installer livre
 Check(cmd.Contains("Get-LocalUser -Name 'suporte'"), "install.cmd só ajusta a senha se o usuário existir (log limpo no Sandbox)");
 Check(cmd.Contains("[1/") && cmd.Contains("Progresso geral:") && cmd.Contains("title IsoForge - Instalando"), "install.cmd mostra progresso (X/N + barra + título da janela)");
 
+// ---- Alinhamento da barra de tarefas ----
+var appTbLeft = ExtraScriptsGenerator.Appearance(null, null, WindowsThemeMode.Default, TaskbarAlignment.Left);
+Check(appTbLeft.Contains("TaskbarAl") && appTbLeft.Contains("-Value 0") && appTbLeft.Contains("/d 0 /f"), "barra: alinhamento à esquerda (TaskbarAl=0, inclusive hive padrão)");
+var appTbCenter = ExtraScriptsGenerator.Appearance(null, null, WindowsThemeMode.Default, TaskbarAlignment.Center);
+Check(appTbCenter.Contains("-Value 1") && appTbCenter.Contains("/d 1 /f"), "barra: alinhamento centralizado (TaskbarAl=1)");
+Check(ExtraScriptsGenerator.HasAppearance(new BuildConfig { TaskbarAlign = TaskbarAlignment.Left }), "barra: alinhamento define HasAppearance (gera o Set-Appearance.ps1)");
+Check(!ExtraScriptsGenerator.Appearance(null, null).Contains("TaskbarAl"), "barra: 'Padrão' não mexe no alinhamento");
+
 // ---- Wi-Fi automático + gate de internet ----
 var cfgNet = new BuildConfig { UserName = "s", Password = "x", AutoConnectWifi = true, WifiSsid = "MinhaRede", WifiPassword = "segredo123", OfficeOffline = false };
 cfgNet.Apps.Add(new AppEntry { Name = "FortiClient", InstallerPath = @"C:\x\FortiClientVPNInstaller.exe", SilentArgs = "/quiet", RequiresInternet = true });

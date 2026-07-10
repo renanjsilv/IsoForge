@@ -125,18 +125,38 @@ public static class ExtraScriptsGenerator
 
     public static bool HasAppearance(BuildConfig cfg)
         => !string.IsNullOrWhiteSpace(cfg.WallpaperPath) || !string.IsNullOrWhiteSpace(cfg.LockScreenPath)
-           || cfg.WindowsTheme != WindowsThemeMode.Default;
+           || cfg.WindowsTheme != WindowsThemeMode.Default
+           || cfg.TaskbarAlign != TaskbarAlignment.Default;
 
     // ------------------------------------------------------------------
     // Aparência: papel de parede + tela de bloqueio (login) + tema claro/escuro
     // ------------------------------------------------------------------
     public static string Appearance(string? wallpaperFileName, string? lockScreenFileName,
-        WindowsThemeMode theme = WindowsThemeMode.Default)
+        WindowsThemeMode theme = WindowsThemeMode.Default,
+        TaskbarAlignment taskbar = TaskbarAlignment.Default)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("# Aparencia padrao (IsoForge): papel de parede + tela de bloqueio + tema");
+        sb.AppendLine("# Aparencia padrao (IsoForge): papel de parede + tela de bloqueio + tema + barra de tarefas");
         sb.AppendLine("$ErrorActionPreference = 'SilentlyContinue'");
         sb.AppendLine();
+
+        if (taskbar != TaskbarAlignment.Default)
+        {
+            // TaskbarAl: 1 = centralizado (padrao Win11), 0 = a esquerda.
+            int v = taskbar == TaskbarAlignment.Center ? 1 : 0;
+            var nome = taskbar == TaskbarAlignment.Center ? "centralizada" : "a esquerda";
+            sb.AppendLine($"# Alinhamento da barra de tarefas: {nome}");
+            sb.AppendLine("$adv = 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced'");
+            sb.AppendLine("New-Item -Path $adv -Force | Out-Null");
+            sb.AppendLine($"Set-ItemProperty $adv -Name 'TaskbarAl' -Value {v} -Type DWord -Force");
+            sb.AppendLine("# Novos usuarios: aplica tambem no hive padrao (C:\\Users\\Default).");
+            sb.AppendLine("reg load HKU\\IsoForgeDefTb \"C:\\Users\\Default\\NTUSER.DAT\" 2>$null | Out-Null");
+            sb.AppendLine($"reg add HKU\\IsoForgeDefTb\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced /v TaskbarAl /t REG_DWORD /d {v} /f | Out-Null");
+            sb.AppendLine("[gc]::Collect(); [gc]::WaitForPendingFinalizers()");
+            sb.AppendLine("reg unload HKU\\IsoForgeDefTb 2>$null | Out-Null");
+            sb.AppendLine($"Write-Output \"IsoForge: barra de tarefas {nome}\"");
+            sb.AppendLine();
+        }
 
         if (theme != WindowsThemeMode.Default)
         {
