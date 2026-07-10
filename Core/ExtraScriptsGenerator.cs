@@ -15,6 +15,113 @@ public static class ExtraScriptsGenerator
     public const string FortiFileName = "Configure-FortiClient.ps1";
     public const string FortiRegImportName = "FortiClient-import.reg";
     public const string FortiVpnXmlName = "FortiClient-vpn.xml";
+    public const string WaitForInternetFileName = "WaitForInternet.ps1";
+    public const string WifiProfileFileName = "WifiProfile.xml";
+
+    public static bool HasWifi(BuildConfig cfg)
+        => cfg.AutoConnectWifi && !string.IsNullOrWhiteSpace(cfg.WifiSsid);
+
+    // ------------------------------------------------------------------
+    // Espera por internet: mostra uma janela pedindo conexão e volta o fluxo
+    // sozinho assim que detectar internet (usado antes de apps que precisam da rede).
+    // ASCII puro de proposito (evita quebrar o PowerShell 5.1 com acentos).
+    // ------------------------------------------------------------------
+    public static string WaitForInternet()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("# IsoForge: aguarda conexao com a internet antes de instalar apps que precisam da rede.");
+        sb.AppendLine("$ErrorActionPreference = 'SilentlyContinue'");
+        sb.AppendLine("function Test-Internet {");
+        sb.AppendLine("  try {");
+        sb.AppendLine("    $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://www.msftconnecttest.com/connecttest.txt' -TimeoutSec 5");
+        sb.AppendLine("    if ($r.StatusCode -eq 200 -and $r.Content -match 'Microsoft Connect Test') { return $true }");
+        sb.AppendLine("  } catch {}");
+        sb.AppendLine("  try { return (Test-Connection -ComputerName '1.1.1.1' -Count 1 -Quiet -ErrorAction Stop) } catch { return $false }");
+        sb.AppendLine("}");
+        sb.AppendLine();
+        sb.AppendLine("if (Test-Internet) { Write-Output 'IsoForge: internet OK.'; exit 0 }");
+        sb.AppendLine();
+        sb.AppendLine("Add-Type -AssemblyName System.Windows.Forms");
+        sb.AppendLine("Add-Type -AssemblyName System.Drawing");
+        sb.AppendLine("$form = New-Object System.Windows.Forms.Form");
+        sb.AppendLine("$form.Text = 'IsoForge - Conexao necessaria'");
+        sb.AppendLine("$form.Size = New-Object System.Drawing.Size(540,230)");
+        sb.AppendLine("$form.StartPosition = 'CenterScreen'");
+        sb.AppendLine("$form.TopMost = $true");
+        sb.AppendLine("$form.FormBorderStyle = 'FixedDialog'");
+        sb.AppendLine("$form.MaximizeBox = $false; $form.MinimizeBox = $false");
+        sb.AppendLine("$lbl = New-Object System.Windows.Forms.Label");
+        sb.AppendLine("$lbl.Text = \"Alguns programas precisam de internet para instalar.`r`n`r`nConecte-se a uma rede (Wi-Fi ou cabo de rede). A instalacao continua sozinha assim que a conexao for detectada.\"");
+        sb.AppendLine("$lbl.Location = New-Object System.Drawing.Point(20,20)");
+        sb.AppendLine("$lbl.Size = New-Object System.Drawing.Size(490,95)");
+        sb.AppendLine("$form.Controls.Add($lbl)");
+        sb.AppendLine("$status = New-Object System.Windows.Forms.Label");
+        sb.AppendLine("$status.Text = 'Aguardando conexao...'");
+        sb.AppendLine("$status.Location = New-Object System.Drawing.Point(20,120)");
+        sb.AppendLine("$status.Size = New-Object System.Drawing.Size(490,20)");
+        sb.AppendLine("$form.Controls.Add($status)");
+        sb.AppendLine("$btn = New-Object System.Windows.Forms.Button");
+        sb.AppendLine("$btn.Text = 'Continuar mesmo assim'");
+        sb.AppendLine("$btn.Location = New-Object System.Drawing.Point(330,150)");
+        sb.AppendLine("$btn.Size = New-Object System.Drawing.Size(180,32)");
+        sb.AppendLine("$btn.Add_Click({ $form.Tag = 'skip'; $form.Close() })");
+        sb.AppendLine("$form.Controls.Add($btn)");
+        sb.AppendLine("$script:elapsed = 0");
+        sb.AppendLine("$timer = New-Object System.Windows.Forms.Timer");
+        sb.AppendLine("$timer.Interval = 3000");
+        sb.AppendLine("$timer.Add_Tick({");
+        sb.AppendLine("  $script:elapsed += 3");
+        sb.AppendLine("  if (Test-Internet) { $form.Tag = 'ok'; $form.Close(); return }");
+        sb.AppendLine("  if ($script:elapsed -ge 3600) { $form.Tag = 'timeout'; $form.Close(); return }");
+        sb.AppendLine("  $status.Text = 'Aguardando conexao... (' + $script:elapsed + 's)'");
+        sb.AppendLine("})");
+        sb.AppendLine("$form.Add_Shown({ $form.Activate() })");
+        sb.AppendLine("$timer.Start()");
+        sb.AppendLine("[System.Windows.Forms.Application]::Run($form)");
+        sb.AppendLine("$timer.Stop()");
+        sb.AppendLine("if ($form.Tag -eq 'ok') { Write-Output 'IsoForge: internet detectada, continuando.' }");
+        sb.AppendLine("elseif ($form.Tag -eq 'skip') { Write-Output 'IsoForge: usuario optou por continuar sem internet.' }");
+        sb.AppendLine("else { Write-Output 'IsoForge: tempo limite aguardando internet; continuando.' }");
+        sb.AppendLine("exit 0");
+        return sb.ToString();
+    }
+
+    // ------------------------------------------------------------------
+    // Perfil WLAN (Wi-Fi) para conexão automática via netsh no 1º logon.
+    // Se a senha for vazia, gera perfil de rede ABERTA.
+    // ------------------------------------------------------------------
+    public static string WifiProfileXml(string ssid, string password)
+    {
+        static string Esc(string s) => System.Security.SecurityElement.Escape(s ?? "") ?? "";
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\"?>");
+        sb.AppendLine("<WLANProfile xmlns=\"http://www.microsoft.com/networking/WLAN/profile/v1\">");
+        sb.AppendLine($"  <name>{Esc(ssid)}</name>");
+        sb.AppendLine("  <SSIDConfig>");
+        sb.AppendLine($"    <SSID><name>{Esc(ssid)}</name></SSID>");
+        sb.AppendLine("  </SSIDConfig>");
+        sb.AppendLine("  <connectionType>ESS</connectionType>");
+        sb.AppendLine("  <connectionMode>auto</connectionMode>");
+        sb.AppendLine("  <MSM>");
+        sb.AppendLine("    <security>");
+        if (string.IsNullOrEmpty(password))
+        {
+            sb.AppendLine("      <authEncryption><authentication>open</authentication><encryption>none</encryption><useOneX>false</useOneX></authEncryption>");
+        }
+        else
+        {
+            sb.AppendLine("      <authEncryption><authentication>WPA2PSK</authentication><encryption>AES</encryption><useOneX>false</useOneX></authEncryption>");
+            sb.AppendLine("      <sharedKey>");
+            sb.AppendLine("        <keyType>passPhrase</keyType>");
+            sb.AppendLine("        <protected>false</protected>");
+            sb.AppendLine($"        <keyMaterial>{Esc(password)}</keyMaterial>");
+            sb.AppendLine("      </sharedKey>");
+        }
+        sb.AppendLine("    </security>");
+        sb.AppendLine("  </MSM>");
+        sb.AppendLine("</WLANProfile>");
+        return sb.ToString();
+    }
 
     public static bool HasAppearance(BuildConfig cfg)
         => !string.IsNullOrWhiteSpace(cfg.WallpaperPath) || !string.IsNullOrWhiteSpace(cfg.LockScreenPath)

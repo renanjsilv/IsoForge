@@ -39,11 +39,21 @@ few-clicks, from-scratch install.
     Optionally **removes the setup user from the Administrators group**.
 - **Apps as cards** — pick programs by clicking cards; each app's options appear as soon as
   you select it. Silent install at first logon: Office 365 (via ODT), AnyDesk, 7‑Zip,
-  FortiClient, Adobe Reader and any `.exe`/`.msi`. IsoForge **auto-downloads** the latest
-  versions of common apps.
+  FortiClient, Adobe Reader, **Google Chrome, Mozilla Firefox, Notepad++, Visual C++
+  2015‑2022** and any `.exe`/`.msi`. IsoForge **auto-downloads the latest version straight
+  from each app's official repository**.
 - **Office online/offline + language** — choose whether Office downloads at first logon
   (online) or is embedded in the ISO (offline, **no internet**), and the language
   (pt‑BR, en‑US, es‑ES, pt‑PT).
+- **FortiClient version choice** — when selected, a dialog asks for **7.4.1** (offline `.msi`,
+  fully silent) or the **latest** (straight from Fortinet's official repository).
+- **Automatic Wi‑Fi connection** — enter SSID + password and the machine boots already
+  connected at first logon (WLAN profile via `netsh`).
+- **Automatic wait for internet** — before installing an app that needs the network (e.g.
+  Office online), if there's no connection a message asks the user to connect and the
+  install **resumes on its own** as soon as internet is detected.
+- **Install progress** — the first-logon window shows "program X of N" + an overall progress
+  bar (and in the window title).
 - **Windows light or dark theme** — sets the apps/system theme at first logon and for new users.
 - **Automatic disk selection (optional)** — in WinPE it picks the first fixed disk that is
   **not the USB stick**, partitions it and installs unattended. Falls back to manual if no

@@ -166,6 +166,10 @@ public partial class MainWindow : Window
         CardSevenZip.IsChecked = _config.Apps.Any(a => a.Name == "7-Zip");
         CardForti.IsChecked = _config.Apps.Any(a => a.Name == "FortiClient");
         CardAdobe.IsChecked = _config.Apps.Any(a => a.Name == "Adobe Acrobat Reader");
+        CardChrome.IsChecked = _config.Apps.Any(a => a.Name == "Google Chrome");
+        CardFirefox.IsChecked = _config.Apps.Any(a => a.Name == "Mozilla Firefox");
+        CardNotepad.IsChecked = _config.Apps.Any(a => a.Name == "Notepad++");
+        CardVcRedist.IsChecked = _config.Apps.Any(a => a.Name == "Visual C++ 2015-2022 (x64)");
         _syncingCards = false;
         AppsChips.ItemsSource = _config.Apps;
         UpdateDynamicConfigCards();
@@ -200,7 +204,33 @@ public partial class MainWindow : Window
     async void CardAnyDesk_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardAnyDesk, AppId.AnyDesk, "AnyDesk");
     async void CardSevenZip_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardSevenZip, AppId.SevenZip, "7-Zip");
     async void CardAdobe_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardAdobe, AppId.AdobeReader, "Adobe Acrobat Reader");
-    async void CardForti_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardForti, AppId.FortiClient, "FortiClient");
+    // Ao selecionar o FortiClient, abre uma tela perguntando a versão (7.4.1 offline × mais recente oficial).
+    async void CardForti_Click(object sender, RoutedEventArgs e)
+    {
+        if (_syncingCards) return;
+        if (CardForti.IsChecked == true)
+        {
+            var dlg = new FortiVersionWindow { Owner = this };
+            if (dlg.ShowDialog() != true)
+            {
+                _syncingCards = true; CardForti.IsChecked = false; _syncingCards = false;
+                return;
+            }
+            _config.FortiClientLatest = dlg.Latest;
+            var ok = await AddAutoAsync(dlg.Latest ? AppId.FortiClientLatest : AppId.FortiClient);
+            if (!ok) { _syncingCards = true; CardForti.IsChecked = false; _syncingCards = false; }
+        }
+        else
+        {
+            var app = _config.Apps.FirstOrDefault(a => a.Name == "FortiClient");
+            if (app != null) _config.Apps.Remove(app);
+        }
+        UpdateDynamicConfigCards();
+    }
+    async void CardChrome_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardChrome, AppId.Chrome, "Google Chrome");
+    async void CardFirefox_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardFirefox, AppId.Firefox, "Mozilla Firefox");
+    async void CardNotepad_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardNotepad, AppId.NotepadPlus, "Notepad++");
+    async void CardVcRedist_Click(object sender, RoutedEventArgs e) => await ToggleAppCard(CardVcRedist, AppId.VcRedist, "Visual C++ 2015-2022 (x64)");
 
     async Task ToggleAppCard(ToggleButton card, AppId id, string name)
     {
@@ -272,7 +302,8 @@ public partial class MainWindow : Window
             Name = known.Name,
             InstallerPath = known.LocalPath,
             SilentArgs = known.SilentArgs,
-            Kind = known.IsOffice ? AppKind.Office : AppKind.Generic
+            Kind = known.IsOffice ? AppKind.Office : AppKind.Generic,
+            RequiresInternet = known.RequiresInternet
         });
         AppendLog($"{known.Name} adicionado (versão {known.Version}).");
         return true;
@@ -316,6 +347,12 @@ public partial class MainWindow : Window
         UpdateGoldenSummary();
         if (offline && string.IsNullOrWhiteSpace(TxtOfficeSource.Text))
             AppendLog("Office offline selecionado. Clique em 'Baixar Office...' para embutir o Office na ISO (~3,5 GB).");
+    }
+
+    void AutoWifi_Changed(object sender, RoutedEventArgs e)
+    {
+        if (PanelWifi == null) return;
+        PanelWifi.IsEnabled = ChkAutoWifi.IsChecked == true;
     }
 
     void OfficeLang_Changed(object sender, SelectionChangedEventArgs e)
@@ -671,6 +708,9 @@ public partial class MainWindow : Window
         _config.NoPromptBoot = ChkNoPrompt.IsChecked == true;
         _config.AutoSelectDisk = ChkAutoDisk.IsChecked == true;
         _config.SkipWifiSetup = ChkSkipWifi.IsChecked == true;
+        _config.AutoConnectWifi = ChkAutoWifi.IsChecked == true;
+        _config.WifiSsid = TxtWifiSsid.Text.Trim();
+        _config.WifiPassword = TxtWifiPassword.Text;
 
         _config.Mode = RbModeEntra.IsChecked == true ? DeploymentMode.EntraId : DeploymentMode.LocalAccount;
         _config.DemoteEntraJoiner = ChkDemoteEntra.IsChecked == true;
@@ -725,6 +765,10 @@ public partial class MainWindow : Window
         ChkNoPrompt.IsChecked = _config.NoPromptBoot;
         ChkAutoDisk.IsChecked = _config.AutoSelectDisk;
         ChkSkipWifi.IsChecked = _config.SkipWifiSetup;
+        ChkAutoWifi.IsChecked = _config.AutoConnectWifi;
+        TxtWifiSsid.Text = _config.WifiSsid;
+        TxtWifiPassword.Text = _config.WifiPassword;
+        PanelWifi.IsEnabled = _config.AutoConnectWifi;
 
         RbModeEntra.IsChecked = _config.Mode == DeploymentMode.EntraId;
         RbModeLocal.IsChecked = _config.Mode != DeploymentMode.EntraId;
@@ -913,6 +957,24 @@ public partial class MainWindow : Window
     async void TestSandbox_Click(object sender, RoutedEventArgs e)
     {
         var cfg = CollectConfig();
+
+        // Office ONLINE baixa via BITS/Delivery Optimization — que o Windows Sandbox não suporta
+        // de forma confiável (erro 30183). Avisa antes para o usuário não achar que é bug da ISO.
+        bool officeOnline = cfg.Apps.Any(a => a.Kind == AppKind.Office) && !cfg.OfficeOffline;
+        if (officeOnline)
+        {
+            var r = MessageBox.Show(this,
+                "O Office no modo ONLINE baixa da internet via BITS, que o Windows Sandbox não suporta " +
+                "bem (dá o erro 30183 \"couldn't install / download a required file\"), mesmo com internet.\n\n" +
+                "Isso é uma limitação do Sandbox — numa máquina real ou VM Hyper-V o Office online instala normal.\n\n" +
+                "Para testar o Office, prefira:\n" +
+                "  • Office OFFLINE (embute o Office na ISO) — funciona no Sandbox; ou\n" +
+                "  • o botão \"Script Hyper-V\" (testa o fluxo online numa VM de verdade).\n\n" +
+                "Deseja continuar o teste no Sandbox mesmo assim? (os outros apps instalam normalmente)",
+                "IsoForge — Office online no Sandbox", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (r != MessageBoxResult.Yes) return;
+        }
+
         var folder = Path.Combine(Path.GetTempPath(), "IsoForge", "SandboxTest");
         var progress = new Progress<string>(AppendLog);
         SetBusy(true);

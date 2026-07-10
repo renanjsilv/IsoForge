@@ -110,9 +110,10 @@
                                 <TextBox x:Name="TxtOutputIso" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
                                 <Button Grid.Row="1" Grid.Column="2" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseOutputIso_Click"/>
 
-                                <TextBlock Grid.Row="2" Text="oscdimg.exe (ADK):" VerticalAlignment="Center"/>
-                                <TextBox x:Name="TxtOscdimg" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
-                                <Button Grid.Row="2" Grid.Column="2" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseOscdimg_Click"/>
+                                <!-- oscdimg já vem embutido no IsoForge: campo oculto (usado por baixo dos panos). -->
+                                <TextBlock Grid.Row="2" Text="oscdimg.exe (ADK):" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                <TextBox x:Name="TxtOscdimg" Grid.Row="2" Grid.Column="1" Margin="0,4" Visibility="Collapsed"/>
+                                <Button Grid.Row="2" Grid.Column="2" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseOscdimg_Click" Visibility="Collapsed"/>
 
                                 <CheckBox x:Name="ChkNoPrompt" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
                                           Content="Boot direto sem &quot;Pressione qualquer tecla para iniciar do CD/DVD&quot; (útil em VM)"/>
@@ -130,8 +131,29 @@
                         </GroupBox>
 
                         <GroupBox Header="Primeiro boot (OOBE)">
-                            <CheckBox x:Name="ChkSkipWifi" Content="Pular a tela de configuração de WiFi no primeiro boot"
-                                      ToolTip="Útil com cabo de rede. No modo Entra ID o WiFi é necessário para o ingresso — só pule se for usar cabo."/>
+                            <StackPanel>
+                                <CheckBox x:Name="ChkSkipWifi" Content="Pular a tela de configuração de WiFi no primeiro boot"/>
+
+                                <CheckBox x:Name="ChkAutoWifi" Content="Conectar automaticamente a uma rede Wi-Fi no primeiro logon"
+                                          Margin="0,12,0,0" Checked="AutoWifi_Changed" Unchecked="AutoWifi_Changed"/>
+                                <Grid x:Name="PanelWifi" Margin="28,10,0,0" IsEnabled="False">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Nome (SSID):" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtWifiSsid" Grid.Column="1" Margin="0,4"/>
+                                    <TextBlock Grid.Row="1" Text="Senha:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtWifiPassword" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               Text="Rede WPA2-PSK (padrão doméstico/escritório). Deixe a senha em branco para redes abertas. A senha fica embutida na ISO — trate a ISO como material sensível."/>
+                                </Grid>
+                            </StackPanel>
                         </GroupBox>
                     </StackPanel>
                 </ScrollViewer>
@@ -236,6 +258,10 @@
                                     <ToggleButton x:Name="CardSevenZip" Style="{StaticResource AppCard}" Content="7-Zip"         Tag="&#xE8B7;" Click="CardSevenZip_Click"/>
                                     <ToggleButton x:Name="CardForti"    Style="{StaticResource AppCard}" Content="FortiClient"   Tag="&#xE72E;" Click="CardForti_Click"/>
                                     <ToggleButton x:Name="CardAdobe"    Style="{StaticResource AppCard}" Content="Adobe Reader"  Tag="&#xEA90;" Click="CardAdobe_Click"/>
+                                    <ToggleButton x:Name="CardChrome"   Style="{StaticResource AppCard}" Content="Google Chrome" Tag="&#xE774;" Click="CardChrome_Click"/>
+                                    <ToggleButton x:Name="CardFirefox"  Style="{StaticResource AppCard}" Content="Firefox"       Tag="&#xE909;" Click="CardFirefox_Click"/>
+                                    <ToggleButton x:Name="CardNotepad"  Style="{StaticResource AppCard}" Content="Notepad++"     Tag="&#xE70F;" Click="CardNotepad_Click"/>
+                                    <ToggleButton x:Name="CardVcRedist" Style="{StaticResource AppCard}" Content="Visual C++"    Tag="&#xE943;" Click="CardVcRedist_Click"/>
                                     <Button Content="+  Adicionar outro" Style="{StaticResource Secondary}" Width="196" Height="96" Margin="0,0,14,14" Click="AddCustomApp_Click"/>
                                 </WrapPanel>
 

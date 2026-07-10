@@ -1048,7 +1048,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ToolTip">
                     <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}"
-                            MaxWidth="420">
+                            MaxWidth="420" TextElement.Foreground="{TemplateBinding Foreground}">
                         <ContentPresenter/>
                     </Border>
                 </ControlTemplate>

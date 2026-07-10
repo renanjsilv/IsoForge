@@ -1,0 +1,25 @@
+<Window x:Class="IsoForge.FortiVersionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FortiClient VPN" Icon="icon.ico"
+        Width="560" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource WindowBg}">
+    <StackPanel Margin="24">
+        <TextBlock Text="Qual versão do FortiClient VPN você quer instalar?"
+                   FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,4,0,18" TextWrapping="Wrap"
+                   Text="Escolha a versão que virá na imagem. Dá para trocar depois: é só clicar de novo no FortiClient."/>
+
+        <Button Content="Versão mais recente  (recomendada)" Click="Latest_Click" Style="{StaticResource Cta}" HorizontalAlignment="Stretch" Padding="16,12"/>
+        <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="2,6,0,16" TextWrapping="Wrap"
+                   Text="Baixa direto do repositório oficial da Fortinet no 1º logon (online installer — precisa de internet e pode não ser totalmente silencioso)."/>
+
+        <Button Content="Versão 7.4.1" Click="Pinned_Click" Style="{StaticResource Secondary}" HorizontalAlignment="Stretch" Padding="16,12"/>
+        <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="2,6,0,0" TextWrapping="Wrap"
+                   Text="Instalador offline (.msi): instala sem internet e 100% silencioso."/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Content="Cancelar" Click="Cancel_Click" Style="{StaticResource Secondary}" Padding="14,8"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

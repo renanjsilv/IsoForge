@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 
 namespace IsoForge.Core;
 
-public enum AppId { SevenZip, AnyDesk, OfficeOdt, AdobeReader, FortiClient }
+public enum AppId { SevenZip, AnyDesk, OfficeOdt, AdobeReader, FortiClient, FortiClientLatest, Chrome, Firefox, NotepadPlus, VcRedist }
 
-public record FetchResult(AppId Id, string Name, string? LocalPath, string Version, string SilentArgs, bool IsOffice, string? Error = null);
+public record FetchResult(AppId Id, string Name, string? LocalPath, string Version, string SilentArgs, bool IsOffice, string? Error = null, bool RequiresInternet = false);
 
 /// <summary>
 /// Baixa automaticamente a versão mais recente dos instaladores conhecidos para uma
@@ -58,6 +58,11 @@ public class InstallerFetcher
                 AppId.OfficeOdt => await OfficeOdtAsync(log, ct, percent),
                 AppId.AdobeReader => await AdobeAsync(log, ct, percent),
                 AppId.FortiClient => await FortiClientAsync(log, ct, percent),
+                AppId.FortiClientLatest => await FortiClientLatestAsync(log, ct, percent),
+                AppId.Chrome => await ChromeAsync(log, ct, percent),
+                AppId.Firefox => await FirefoxAsync(log, ct, percent),
+                AppId.NotepadPlus => await NotepadPlusAsync(log, ct, percent),
+                AppId.VcRedist => await VcRedistAsync(log, ct, percent),
                 _ => throw new ArgumentOutOfRangeException(nameof(id))
             };
         }
@@ -142,17 +147,95 @@ public class InstallerFetcher
         return new FetchResult(AppId.AdobeReader, "Adobe Acrobat Reader", path, ver, "/sAll /rs /msi EULA_ACCEPT=YES", false);
     }
 
-    // ---- FortiClient VPN (MSI, link direto da Datora) ----
+    // ---- FortiClient VPN 7.4.1 (MSI offline, espelho da Datora) ----
     async Task<FetchResult> FortiClientAsync(IProgress<string> log, CancellationToken ct, IProgress<double>? pct)
     {
         var dir = FolderFor(AppId.FortiClient);
         var path = Path.Combine(dir, "FortiClientVPN.msi");
         if (await RemoteChangedAsync(FortiClientUrl, path, ct))
         {
-            log.Report("Baixando FortiClient VPN...");
+            log.Report("Baixando FortiClient VPN 7.4.1 (offline)...");
             await DownloadAsync(FortiClientUrl, path, ct, pct);
         }
-        return new FetchResult(AppId.FortiClient, "FortiClient", path, "mais recente", "/qn /norestart", false);
+        return new FetchResult(AppId.FortiClient, "FortiClient", path, "7.4.1", "/qn /norestart", false);
+    }
+
+    // ---- FortiClient VPN (mais recente, direto do repositório oficial da Fortinet) ----
+    // links.fortinet.com/forticlient/win/vpnagent -> FortiClientVPNInstaller.exe (online installer).
+    async Task<FetchResult> FortiClientLatestAsync(IProgress<string> log, CancellationToken ct, IProgress<double>? pct)
+    {
+        const string url = "https://links.fortinet.com/forticlient/win/vpnagent";
+        var dir = FolderFor(AppId.FortiClientLatest);
+        var path = Path.Combine(dir, "FortiClientVPNInstaller.exe");
+        if (await RemoteChangedAsync(url, path, ct))
+        {
+            log.Report("Baixando FortiClient VPN (mais recente, oficial Fortinet)...");
+            await DownloadAsync(url, path, ct, pct);
+        }
+        // Online installer: baixa o cliente da Fortinet durante a instalação -> exige internet no 1º logon.
+        return new FetchResult(AppId.FortiClientLatest, "FortiClient", path, "mais recente", "/quiet", false, RequiresInternet: true);
+    }
+
+    // ---- Google Chrome (Enterprise MSI oficial, URL sempre-mais-recente) ----
+    async Task<FetchResult> ChromeAsync(IProgress<string> log, CancellationToken ct, IProgress<double>? pct)
+    {
+        const string url = "https://dl.google.com/tag/s/dl/chrome/install/googlechromestandaloneenterprise64.msi";
+        var dir = FolderFor(AppId.Chrome);
+        var path = Path.Combine(dir, "GoogleChromeEnterprise64.msi");
+        if (await RemoteChangedAsync(url, path, ct))
+        {
+            log.Report("Baixando Google Chrome (mais recente)...");
+            await DownloadAsync(url, path, ct, pct);
+        }
+        return new FetchResult(AppId.Chrome, "Google Chrome", path, "mais recente", "/qn /norestart", false);
+    }
+
+    // ---- Mozilla Firefox (MSI oficial pt-BR, URL sempre-mais-recente) ----
+    async Task<FetchResult> FirefoxAsync(IProgress<string> log, CancellationToken ct, IProgress<double>? pct)
+    {
+        const string url = "https://download.mozilla.org/?product=firefox-msi-latest-ssl&os=win64&lang=pt-BR";
+        var dir = FolderFor(AppId.Firefox);
+        var path = Path.Combine(dir, "FirefoxSetup.msi");
+        if (await RemoteChangedAsync(url, path, ct))
+        {
+            log.Report("Baixando Mozilla Firefox (mais recente)...");
+            await DownloadAsync(url, path, ct, pct);
+        }
+        return new FetchResult(AppId.Firefox, "Mozilla Firefox", path, "mais recente", "/qn /norestart", false);
+    }
+
+    // ---- Notepad++ (última release oficial no GitHub, instalador x64) ----
+    async Task<FetchResult> NotepadPlusAsync(IProgress<string> log, CancellationToken ct, IProgress<double>? pct)
+    {
+        var json = await Http.GetStringAsync("https://api.github.com/repos/notepad-plus-plus/notepad-plus-plus/releases/latest", ct);
+        var ver = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"v?([\\d.]+)\"") is { Success: true } t ? t.Groups[1].Value : "mais recente";
+        var asset = Regex.Match(json, "\"browser_download_url\"\\s*:\\s*\"(https://[^\"]*?Installer\\.x64\\.exe)\"");
+        if (!asset.Success) throw new InvalidOperationException("não achei o instalador x64 na última release do Notepad++.");
+        var url = asset.Groups[1].Value;
+        var dir = FolderFor(AppId.NotepadPlus);
+        var name = Path.GetFileName(new Uri(url).LocalPath);
+        var path = Path.Combine(dir, name);
+        if (!File.Exists(path))
+        {
+            CleanFolder(dir);
+            log.Report($"Baixando Notepad++ {ver}...");
+            await DownloadAsync(url, path, ct, pct);
+        }
+        return new FetchResult(AppId.NotepadPlus, "Notepad++", path, ver, "/S", false);
+    }
+
+    // ---- Visual C++ 2015-2022 Redistributable x64 (oficial Microsoft, sempre-mais-recente) ----
+    async Task<FetchResult> VcRedistAsync(IProgress<string> log, CancellationToken ct, IProgress<double>? pct)
+    {
+        const string url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+        var dir = FolderFor(AppId.VcRedist);
+        var path = Path.Combine(dir, "vc_redist.x64.exe");
+        if (await RemoteChangedAsync(url, path, ct))
+        {
+            log.Report("Baixando Visual C++ Redistributable (mais recente)...");
+            await DownloadAsync(url, path, ct, pct);
+        }
+        return new FetchResult(AppId.VcRedist, "Visual C++ 2015-2022 (x64)", path, "mais recente", "/install /quiet /norestart", false);
     }
 
     // ------------------------------------------------------------------

@@ -21,6 +21,8 @@ cfg.Apps.Add(new AppEntry { Name = "Office 365 (ODT)", InstallerPath = @"C:\x\se
 cfg.Apps.Add(new AppEntry { Name = "AnyDesk", InstallerPath = @"C:\x\AnyDesk.exe", SilentArgs = "--install \"C:\\Program Files (x86)\\AnyDesk\" --silent" });
 cfg.Apps.Add(new AppEntry { Name = "7-Zip", InstallerPath = @"C:\x\7z2409-x64.msi", SilentArgs = "/qn /norestart" });
 cfg.Apps.Add(new AppEntry { Name = "Adobe Reader", InstallerPath = @"C:\x\AcroRdrDC.exe", SilentArgs = "/sAll /rs /msi EULA_ACCEPT=YES" });
+cfg.Apps.Add(new AppEntry { Name = "Google Chrome", InstallerPath = @"C:\x\GoogleChromeEnterprise64.msi", SilentArgs = "/qn /norestart" });
+cfg.Apps.Add(new AppEntry { Name = "Visual C++ 2015-2022 (x64)", InstallerPath = @"C:\x\vc_redist.x64.exe", SilentArgs = "/install /quiet /norestart" });
 
 int failures = 0;
 void Check(bool ok, string what)
@@ -64,12 +66,38 @@ Check(BuildConfig.DefaultOfficeConfig.Contains("Display Level=\"Full\""), "Offic
 Check(cmd.Contains("vai BAIXAR da internet"), "install.cmd registra se o Office é offline ou online (diagnóstico no log)");
 Check(cmd.Contains(@"""C:\Setup\Apps\AnyDesk.exe"" --install"), "AnyDesk com argumentos silenciosos");
 Check(cmd.Contains(@"msiexec /i ""C:\Setup\Apps\7z2409-x64.msi"" /qn /norestart"), ".msi roteado para msiexec");
+Check(cmd.Contains(@"msiexec /i ""C:\Setup\Apps\GoogleChromeEnterprise64.msi"" /qn /norestart"), "Google Chrome (.msi) roteado para msiexec");
+Check(cmd.Contains(@"""C:\Setup\Apps\vc_redist.x64.exe"" /install /quiet /norestart"), "Visual C++ (.exe) com /install /quiet /norestart");
 Check(cmd.Contains("Set-LocalUser -Name 'suporte' -PasswordNeverExpires $true"), "senha nunca expira aplicada");
 Check(cmd.Contains(@"-File ""C:\Setup\pos-instalacao.ps1"""), "script personalizado .ps1 chamado");
 Check(cmd.Contains("install.log"), "log de instalação gravado");
 Check(cmd.Contains("install.done"), "install.cmd é idempotente (marcador install.done evita o loop de reboot)");
 Check(cmd.Contains("_MSIExecute"), "install.cmd espera o Windows Installer livre antes de cada app (evita erro 1618)");
 Check(cmd.Contains("Get-LocalUser -Name 'suporte'"), "install.cmd só ajusta a senha se o usuário existir (log limpo no Sandbox)");
+Check(cmd.Contains("[1/") && cmd.Contains("Progresso geral:") && cmd.Contains("title IsoForge - Instalando"), "install.cmd mostra progresso (X/N + barra + título da janela)");
+
+// ---- Wi-Fi automático + gate de internet ----
+var cfgNet = new BuildConfig { UserName = "s", Password = "x", AutoConnectWifi = true, WifiSsid = "MinhaRede", WifiPassword = "segredo123", OfficeOffline = false };
+cfgNet.Apps.Add(new AppEntry { Name = "FortiClient", InstallerPath = @"C:\x\FortiClientVPNInstaller.exe", SilentArgs = "/quiet", RequiresInternet = true });
+var cmdNet = InstallScriptGenerator.Generate(cfgNet);
+Check(cmdNet.Contains("netsh wlan add profile") && cmdNet.Contains("netsh wlan connect name=\"MinhaRede\""), "Wi-Fi: install.cmd adiciona o perfil e conecta na rede informada");
+Check(cmdNet.Contains(ExtraScriptsGenerator.WaitForInternetFileName), "gate: app que precisa de internet espera conexão antes de instalar");
+Check(InstallScriptGenerator.AnyNeedsInternet(cfgNet), "gate: AnyNeedsInternet verdadeiro quando há app online (FortiClient mais recente)");
+
+var wifiXml = ExtraScriptsGenerator.WifiProfileXml("MinhaRede", "segredo123");
+Check(wifiXml.Contains("<name>MinhaRede</name>") && wifiXml.Contains("WPA2PSK") && wifiXml.Contains("<keyMaterial>segredo123</keyMaterial>"), "Wi-Fi: perfil WLAN com SSID + WPA2PSK + senha");
+var wifiOpen = ExtraScriptsGenerator.WifiProfileXml("RedeAberta", "");
+Check(wifiOpen.Contains("<authentication>open</authentication>") && !wifiOpen.Contains("keyMaterial"), "Wi-Fi: rede sem senha vira perfil aberto");
+
+var waitPs = ExtraScriptsGenerator.WaitForInternet();
+Check(waitPs.Contains("msftconnecttest") && waitPs.Contains("Test-Internet"), "gate: WaitForInternet.ps1 checa conexão real e aguarda");
+Check(!waitPs.Any(ch => ch > 126), "gate: WaitForInternet.ps1 é ASCII puro (não quebra o PowerShell)");
+
+// Office ONLINE (config principal) exige internet; Office OFFLINE não.
+Check(InstallScriptGenerator.AnyNeedsInternet(cfg), "gate: Office ONLINE exige internet");
+var cfgOffline = new BuildConfig { UserName = "s", Password = "x", OfficeOffline = true };
+cfgOffline.Apps.Add(new AppEntry { Name = "Office 365 (ODT)", InstallerPath = @"C:\x\setup.exe", Kind = AppKind.Office });
+Check(!InstallScriptGenerator.AnyNeedsInternet(cfgOffline), "gate: Office OFFLINE não exige internet");
 
 // ---- Office offline: SourcePath no Configuration.xml ----
 var offlineXml = OfficeConfig.WithSourcePath(BuildConfig.DefaultOfficeConfig, @"C:\Setup\Apps\Office");

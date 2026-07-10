@@ -460,6 +460,22 @@ public class IsoPipeline
             Log($"FortiClient VPN: {cfg.VpnTunnels.Count} túnel(is) IPsec configurado(s).");
         }
 
+        // 4b. Wi-Fi automático: grava o perfil WLAN (SSID + senha) para conectar via netsh no 1º logon.
+        if (ExtraScriptsGenerator.HasWifi(cfg))
+        {
+            File.WriteAllText(Path.Combine(setupDir, ExtraScriptsGenerator.WifiProfileFileName),
+                ExtraScriptsGenerator.WifiProfileXml(cfg.WifiSsid, cfg.WifiPassword), new UTF8Encoding(false));
+            Log($"Wi-Fi automático: perfil WLAN gerado para a rede \"{cfg.WifiSsid}\".");
+        }
+
+        // 4c. Espera por internet: se algum app precisa de rede, inclui o WaitForInternet.ps1.
+        if (InstallScriptGenerator.AnyNeedsInternet(cfg))
+        {
+            File.WriteAllText(Path.Combine(setupDir, ExtraScriptsGenerator.WaitForInternetFileName),
+                ExtraScriptsGenerator.WaitForInternet(), new UTF8Encoding(true)); // BOM p/ PowerShell 5.1
+            Log("Instalação com apps que precisam de internet: WaitForInternet.ps1 incluído (espera conexão e continua sozinho).");
+        }
+
         // 5. Seleção de unidade (1º logon sem auditoria, ou modo de auditoria)
         if (cfg.UseUnitSelection)
         {

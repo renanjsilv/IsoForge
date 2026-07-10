@@ -57,6 +57,7 @@ public static class InstallScriptGenerator
             sb.AppendLine();
         }
 
+        AppendWifi(sb, c);
         AppendAppInstalls(sb, c);
         AppendAppearance(sb, c);
         AppendForti(sb, c);
@@ -121,20 +122,38 @@ public static class InstallScriptGenerator
     /// </summary>
     internal static void AppendAppInstalls(StringBuilder sb, BuildConfig c)
     {
-        foreach (var app in c.Apps)
-        {
-            if (string.IsNullOrWhiteSpace(app.InstallerPath))
-                continue;
+        var apps = c.Apps.Where(a => !string.IsNullOrWhiteSpace(a.InstallerPath)).ToList();
+        int total = apps.Count;
+        if (total == 0) return;
 
+        sb.AppendLine($"echo Serao instalados {total} programa(s). Acompanhe o progresso abaixo:");
+        sb.AppendLine($"echo   Progresso geral: {Bar(0, total)}");
+        sb.AppendLine();
+
+        for (int idx = 0; idx < total; idx++)
+        {
+            var app = apps[idx];
+            int n = idx + 1;
             var fileName = Path.GetFileName(app.InstallerPath);
             sb.AppendLine($"echo [{app.Name}]>> \"%LOGFILE%\"");
-            sb.AppendLine($"echo Instalando {app.Name}...");
+            // Mostra o programa atual (n de total) no titulo da janela e no corpo, com a barra geral.
+            sb.AppendLine($"title IsoForge - Instalando ({n}/{total}) {app.Name}");
+            sb.AppendLine("echo.");
+            sb.AppendLine($"echo === [{n}/{total}] {app.Name} ===");
+            sb.AppendLine($"echo   Progresso geral: {Bar(idx, total)}");
+            // Se o app precisa de internet, garante conexao antes (mostra a tela pedindo p/ conectar).
+            if (NeedsInternet(app, c))
+                AppendWaitForInternet(sb, app.Name);
             AppendWaitMsi(sb); // espera o Windows Installer ficar livre (evita erro 1618)
 
             if (app.Kind == AppKind.Office)
             {
                 // Diagnostico: registra se ha fonte offline embutida ou se vai baixar da internet.
                 sb.AppendLine($"if exist \"{AppsDirOnDisk}\\Office\\Office\\Data\" (echo   Office OFFLINE: fonte local presente>> \"%LOGFILE%\") else (echo   Office ONLINE: sem fonte local, vai BAIXAR da internet>> \"%LOGFILE%\")");
+                // O Click-to-Run baixa via BITS/Delivery Optimization: garante que os servicos estejam ativos
+                // (ajuda no download online; no Windows real ja rodam, custo zero).
+                sb.AppendLine("sc config BITS start= delayed-auto >nul 2>&1 & net start BITS >nul 2>&1");
+                sb.AppendLine("sc config DoSvc start= demand >nul 2>&1 & net start DoSvc >nul 2>&1");
                 sb.AppendLine($"\"{AppsDirOnDisk}\\Office\\setup.exe\" /configure \"{AppsDirOnDisk}\\Office\\Configuration.xml\">> \"%LOGFILE%\" 2>&1");
                 // O setup.exe pode RETORNAR antes de o Click-to-Run terminar (instala em segundo
                 // plano). Sem esperar, um reboot posterior truncaria o Office -> nao instala.
@@ -157,8 +176,23 @@ public static class InstallScriptGenerator
                 sb.AppendLine($"\"{AppsDirOnDisk}\\{fileName}\" {args}>> \"%LOGFILE%\" 2>&1");
             }
             sb.AppendLine($"echo   codigo de saida: %errorlevel%>> \"%LOGFILE%\"");
+            sb.AppendLine($"echo   [{n}/{total}] {app.Name}: concluido.   {Bar(n, total)}");
             sb.AppendLine();
         }
+        sb.AppendLine("title IsoForge - Instalacao dos programas concluida");
+    }
+
+    /// <summary>
+    /// Barra de progresso GERAL (programas concluidos / total) para exibir no echo do CMD.
+    /// Retorna com '%%' escapado porque o texto vai dentro de um 'echo' no batch.
+    /// </summary>
+    static string Bar(int done, int total)
+    {
+        const int width = 24;
+        int filled = total <= 0 ? width : (int)Math.Round(width * done / (double)total);
+        filled = Math.Max(0, Math.Min(width, filled));
+        int pct = total <= 0 ? 100 : (int)Math.Round(100.0 * done / total);
+        return $"[{new string('#', filled)}{new string('-', width - filled)}] {pct}%% ({done}/{total})";
     }
 
     /// <summary>
@@ -170,6 +204,37 @@ public static class InstallScriptGenerator
     {
         sb.AppendLine("powershell -NoProfile -ExecutionPolicy Bypass -Command \"" +
             "for($i=0;$i -lt 120;$i++){ try { $m=[System.Threading.Mutex]::OpenExisting('Global\\_MSIExecute'); $m.Dispose(); Start-Sleep -Seconds 5 } catch { break } }\" >nul 2>&1");
+    }
+
+    /// <summary>Um app precisa de internet no 1º logon? (online installer do Office ou do FortiClient, etc.)</summary>
+    internal static bool NeedsInternet(AppEntry app, BuildConfig c)
+    {
+        if (app.Kind == AppKind.Office) return !c.OfficeOffline; // Office online baixa no 1º logon
+        return app.RequiresInternet;
+    }
+
+    /// <summary>Algum app do build precisa de internet? (usado para gerar o WaitForInternet.ps1)</summary>
+    public static bool AnyNeedsInternet(BuildConfig c) => c.Apps.Any(a => !string.IsNullOrWhiteSpace(a.InstallerPath) && NeedsInternet(a, c));
+
+    /// <summary>Espera por internet (chama o WaitForInternet.ps1): mostra a tela e volta sozinho ao conectar.</summary>
+    internal static void AppendWaitForInternet(StringBuilder sb, string appName)
+    {
+        sb.AppendLine($"echo   {appName} precisa de internet; verificando conexao...>> \"%LOGFILE%\"");
+        sb.AppendLine($"powershell -NoProfile -ExecutionPolicy Bypass -File \"{SetupDirOnDisk}\\{ExtraScriptsGenerator.WaitForInternetFileName}\">> \"%LOGFILE%\" 2>&1");
+    }
+
+    /// <summary>Conecta automaticamente a uma rede Wi-Fi (perfil WLAN + netsh) no início do 1º logon.</summary>
+    internal static void AppendWifi(StringBuilder sb, BuildConfig c)
+    {
+        if (!ExtraScriptsGenerator.HasWifi(c)) return;
+        var ssid = c.WifiSsid.Replace("\"", "").Trim();
+        sb.AppendLine("echo [Wi-Fi] conectando automaticamente...>> \"%LOGFILE%\"");
+        sb.AppendLine($"echo Conectando a rede Wi-Fi \"{ssid}\"...");
+        sb.AppendLine($"netsh wlan add profile filename=\"{SetupDirOnDisk}\\{ExtraScriptsGenerator.WifiProfileFileName}\" user=all>> \"%LOGFILE%\" 2>&1");
+        sb.AppendLine($"netsh wlan connect name=\"{ssid}\" ssid=\"{ssid}\">> \"%LOGFILE%\" 2>&1");
+        // Aguarda associar + DHCP antes de seguir (o WaitForInternet cobre o resto).
+        sb.AppendLine("ping -n 10 127.0.0.1 >nul");
+        sb.AppendLine();
     }
 
     /// <summary>Aparência: papel de parede + tela de bloqueio (chama o Set-Appearance.ps1 em C:\Setup).</summary>

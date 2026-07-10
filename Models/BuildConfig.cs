@@ -50,6 +50,9 @@ public class AppEntry
     public string InstallerPath { get; set; } = "";
     public string SilentArgs { get; set; } = "";
     public AppKind Kind { get; set; } = AppKind.Generic;
+    // true = o instalador precisa de internet no 1º logon (ex.: online installer). Nesse caso o
+    // install.cmd espera uma conexão antes de instalar (mostra uma mensagem pedindo para conectar).
+    public bool RequiresInternet { get; set; }
 }
 
 public class VpnTunnel
@@ -93,6 +96,12 @@ public class BuildConfig
     // Atenção: no modo Entra ID o WiFi é necessário para o ingresso (a não ser via cabo).
     public bool SkipWifiSetup { get; set; }
 
+    // Conexão automática ao Wi-Fi no 1º logon: gera um perfil WLAN (SSID + senha) e conecta
+    // via netsh, para a máquina já subir com internet. Senha embutida na ISO — trate como sensível.
+    public bool AutoConnectWifi { get; set; }
+    public string WifiSsid { get; set; } = "";
+    public string WifiPassword { get; set; } = "";
+
     // Modo de implantação (comportamento do 1º boot)
     public DeploymentMode Mode { get; set; } = DeploymentMode.LocalAccount;
 
@@ -135,6 +144,8 @@ public class BuildConfig
     public ObservableCollection<VpnTunnel> VpnTunnels { get; set; } = new();
     // Alternativa confiável: .reg exportado de um FortiClient já configurado (importado no 1º logon).
     public string FortiClientRegImportPath { get; set; } = "";
+    // Versão do instalador do FortiClient: false = 7.4.1 (MSI offline); true = mais recente (oficial Fortinet).
+    public bool FortiClientLatest { get; set; }
 
     // Import dos túneis digitados via texto (FCConfig XML). Padrão DESLIGADO: esse método
     // pode instabilizar o FortiClient. O método confiável é o .reg (Capturar deste PC).
