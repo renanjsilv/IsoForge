@@ -281,13 +281,8 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
                     <Border x:Name="b" CornerRadius="9" BorderThickness="1" Padding="{TemplateBinding Padding}"
+                            Background="{StaticResource CardBg}" BorderBrush="{StaticResource InputBorder}"
                             RenderTransformOrigin="0.5,0.5">
-                        <Border.Background>
-                            <SolidColorBrush x:Name="bg" Color="#FFFFFF"/>
-                        </Border.Background>
-                        <Border.BorderBrush>
-                            <SolidColorBrush x:Name="bd" Color="#CBD5E1"/>
-                        </Border.BorderBrush>
                         <Border.RenderTransform>
                             <ScaleTransform x:Name="sc" ScaleX="1" ScaleY="1"/>
                         </Border.RenderTransform>
@@ -295,11 +290,11 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="b" Property="Background" Value="{StaticResource AccentSoft}"/>
+                            <Setter TargetName="b" Property="BorderBrush" Value="{StaticResource Accent}"/>
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <ColorAnimation Storyboard.TargetName="bg" Storyboard.TargetProperty="Color" To="#EFF4FF" Duration="0:0:0.15"/>
-                                        <ColorAnimation Storyboard.TargetName="bd" Storyboard.TargetProperty="Color" To="#2563EB" Duration="0:0:0.15"/>
                                         <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleX" To="1.02" Duration="0:0:0.12"/>
                                         <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleY" To="1.02" Duration="0:0:0.12"/>
                                     </Storyboard>
@@ -308,8 +303,6 @@
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <ColorAnimation Storyboard.TargetName="bg" Storyboard.TargetProperty="Color" To="#FFFFFF" Duration="0:0:0.2"/>
-                                        <ColorAnimation Storyboard.TargetName="bd" Storyboard.TargetProperty="Color" To="#CBD5E1" Duration="0:0:0.2"/>
                                         <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.18"/>
                                         <DoubleAnimation Storyboard.TargetName="sc" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.18"/>
                                     </Storyboard>
@@ -397,7 +390,7 @@
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Padding" Value="9,7"/>
         <Setter Property="BorderBrush" Value="{StaticResource InputBorder}"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource CardBg}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -447,7 +440,7 @@
                         <Border x:Name="box" Width="19" Height="19" CornerRadius="6" BorderThickness="1.6"
                                 VerticalAlignment="Center">
                             <Border.Background>
-                                <SolidColorBrush x:Name="bg" Color="#FFFFFF"/>
+                                <SolidColorBrush x:Name="bg" Color="Transparent"/>
                             </Border.Background>
                             <Border.BorderBrush>
                                 <SolidColorBrush x:Name="bd" Color="#94A3B8"/>
@@ -482,7 +475,7 @@
                             <Trigger.ExitActions>
                                 <BeginStoryboard>
                                     <Storyboard>
-                                        <ColorAnimation Storyboard.TargetName="bg" Storyboard.TargetProperty="Color" To="#FFFFFF" Duration="0:0:0.15"/>
+                                        <ColorAnimation Storyboard.TargetName="bg" Storyboard.TargetProperty="Color" To="Transparent" Duration="0:0:0.15"/>
                                         <ColorAnimation Storyboard.TargetName="bd" Storyboard.TargetProperty="Color" To="#94A3B8" Duration="0:0:0.15"/>
                                         <DoubleAnimation Storyboard.TargetName="check" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.1"/>
                                         <DoubleAnimation Storyboard.TargetName="checkScale" Storyboard.TargetProperty="ScaleX" To="0.4" Duration="0:0:0.1"/>
@@ -518,7 +511,7 @@
                 <ControlTemplate TargetType="RadioButton">
                     <StackPanel Orientation="Horizontal" Background="Transparent">
                         <Border x:Name="ring" Width="19" Height="19" CornerRadius="10" BorderThickness="1.6"
-                                Background="White" VerticalAlignment="Center">
+                                Background="{StaticResource CardBg}" VerticalAlignment="Center">
                             <Border.BorderBrush>
                                 <SolidColorBrush x:Name="bd" Color="#94A3B8"/>
                             </Border.BorderBrush>
@@ -578,7 +571,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="GroupBox">
                     <Grid>
-                        <Border CornerRadius="14" Background="White">
+                        <Border CornerRadius="14" Background="{StaticResource CardBg}">
                             <Border.Effect>
                                 <DropShadowEffect Color="#0F172A" BlurRadius="18" ShadowDepth="2" Direction="270" Opacity="0.07"/>
                             </Border.Effect>
@@ -756,7 +749,7 @@
         <Setter Property="FontFamily" Value="Segoe UI Variable, Segoe UI"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{StaticResource TextMain}"/>
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource CardBg}"/>
         <Setter Property="Padding" Value="10,7"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
@@ -767,7 +760,7 @@
                                       IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                             <ToggleButton.Template>
                                 <ControlTemplate TargetType="ToggleButton">
-                                    <Border x:Name="tb" Background="White" CornerRadius="8"
+                                    <Border x:Name="tb" Background="{StaticResource CardBg}" CornerRadius="8"
                                             BorderBrush="{StaticResource InputBorder}" BorderThickness="1">
                                         <Path x:Name="arrow" Data="M 0,0 L 4.5,4.5 L 9,0" Stroke="#64748B" StrokeThickness="1.8"
                                               StrokeStartLineCap="Round" StrokeEndLineCap="Round"
@@ -806,7 +799,7 @@
                                           Margin="11,0,30,0" VerticalAlignment="Center" IsHitTestVisible="False"/>
                         <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom"
                                AllowsTransparency="True" PopupAnimation="Slide" StaysOpen="False">
-                            <Border Background="White" CornerRadius="10" BorderBrush="{StaticResource CardBorder}" BorderThickness="1"
+                            <Border Background="{StaticResource CardBg}" CornerRadius="10" BorderBrush="{StaticResource CardBorder}" BorderThickness="1"
                                     MinWidth="{TemplateBinding ActualWidth}" MaxHeight="280" Margin="0,4,12,12" Padding="0,4">
                                 <Border.Effect>
                                     <DropShadowEffect Color="#0F172A" BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.18"/>
@@ -863,9 +856,9 @@
          DATAGRID
          ============================================================ -->
     <Style TargetType="DataGrid">
-        <Setter Property="Background" Value="White"/>
+        <Setter Property="Background" Value="{StaticResource CardBg}"/>
         <Setter Property="BorderBrush" Value="{StaticResource CardBorder}"/>
-        <Setter Property="RowBackground" Value="White"/>
+        <Setter Property="RowBackground" Value="{StaticResource CardBg}"/>
         <Setter Property="AlternatingRowBackground" Value="#F8FAFC"/>
         <Setter Property="GridLinesVisibility" Value="Horizontal"/>
         <Setter Property="HorizontalGridLinesBrush" Value="#EEF2F7"/>

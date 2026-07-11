@@ -56,6 +56,9 @@
                 BorderBrush="{StaticResource CardBorder}" BorderThickness="0,0,0,1" Padding="24,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnTheme" Style="{StaticResource Secondary}" Padding="10,7" Margin="0,0,12,0"
+                            FontFamily="Segoe MDL2 Assets" Content="&#xE708;" Click="ToggleTheme_Click"
+                            ToolTip="Alternar tema claro/escuro do IsoForge"/>
                     <TextBlock Text="Perfil" Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="0,0,8,0"/>
                     <ComboBox x:Name="CmbProfile" Width="170" Height="34"
                               ToolTip="Salve/carregue várias configurações nomeadas (ex.: Matriz, Cliente X)."

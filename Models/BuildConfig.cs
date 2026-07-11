@@ -171,6 +171,9 @@ public class BuildConfig
     // Relatório de provisionamento (HTML na área de trabalho pública ao final do 1º logon).
     public bool GenerateReport { get; set; } = true;
 
+    // Tema escuro do PRÓPRIO IsoForge (interface do app), não do Windows de destino.
+    public bool AppDarkTheme { get; set; }
+
     // FortiClient VPN — vazio por padrão; adicione os seus túneis (ficam salvos localmente).
     public ObservableCollection<VpnTunnel> VpnTunnels { get; set; } = new();
     // Alternativa confiável: .reg exportado de um FortiClient já configurado (importado no 1º logon).

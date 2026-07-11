@@ -374,6 +374,22 @@ public partial class MainWindow : Window
         PanelWifi.IsEnabled = ChkAutoWifi.IsChecked == true;
     }
 
+    // Tema claro/escuro da interface do IsoForge.
+    void ToggleTheme_Click(object sender, RoutedEventArgs e)
+    {
+        _config.AppDarkTheme = !_config.AppDarkTheme;
+        ThemeService.Apply(_config.AppDarkTheme);
+        UpdateThemeButton();
+    }
+
+    void UpdateThemeButton()
+    {
+        if (BtnTheme == null) return;
+        // Mostra o destino do clique: lua = mudar p/ escuro; sol = mudar p/ claro.
+        BtnTheme.Content = _config.AppDarkTheme ? ((char)0xE706).ToString() : ((char)0xE708).ToString();
+        BtnTheme.ToolTip = _config.AppDarkTheme ? "Mudar para tema claro" : "Mudar para tema escuro";
+    }
+
     // ------------------------------------------------------------------
     // Drivers do fabricante (injeção por modelo) — Dell
     // ------------------------------------------------------------------
@@ -1162,6 +1178,8 @@ public partial class MainWindow : Window
         ChkDebloatAds.IsChecked = _config.DebloatDisableStartAds;
         ChkDebloatTelemetry.IsChecked = _config.DebloatDisableTelemetry;
         ChkReport.IsChecked = _config.GenerateReport;
+        ThemeService.Apply(_config.AppDarkTheme);
+        UpdateThemeButton();
         TxtFortiReg.Text = _config.FortiClientRegImportPath;
         ChkVpnTextImport.IsChecked = _config.VpnUseTextImport;
         RbXauthSave.IsChecked = _config.VpnXAuth == VpnXAuthMode.Save;
