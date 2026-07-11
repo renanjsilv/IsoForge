@@ -5,7 +5,7 @@
 #define AppName "IsoForge"
 ; AppVersion pode ser sobrescrito pela linha de comando (CI): ISCC /DAppVersion=1.2.3
 #ifndef AppVersion
-  #define AppVersion "1.4.11"
+  #define AppVersion "1.4.12"
 #endif
 #define AppPublisher "IsoForge"
 #define AppExe "IsoForge.exe"

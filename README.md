@@ -62,7 +62,7 @@ do zero, com o mínimo de cliques.
 - **Injeção de drivers por modelo (Dell, Lenovo e HP)** — aba dedicada. Busque o modelo no
   catálogo oficial do fabricante e escolha:
   - **Pack completo** (Dell, Lenovo e HP) — baixa o pack do modelo e você marca quais componentes injetar.
-  - **Drivers individuais** (Dell e Lenovo) — baixa **só** os drivers que você marcar
+  - **Drivers individuais** (Dell, Lenovo e HP) — baixa **só** os drivers que você marcar
     (economiza banda), via os pacotes individuais do fabricante.
   A injeção é feita na ISO via `autounattend` (offlineServicing) + `pnputil`, pra máquina já
   subir com tudo funcionando.

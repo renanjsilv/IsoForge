@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     readonly HpDriverCatalog _hpCatalog = new();
     readonly DellComponentCatalog _componentCatalog = new();
     readonly LenovoComponentCatalog _lenovoComponentCatalog = new();
+    readonly HpComponentCatalog _hpComponentCatalog = new();
     List<DriverPackModel> _dellModels = new();
     List<DriverModelRef> _componentModels = new();
     readonly ObservableCollection<DriverCategoryVm> _driverCategories = new();
@@ -31,9 +32,9 @@ public partial class MainWindow : Window
     string DriverVendor => (CmbDriverVendor?.SelectedItem as ComboBoxItem)?.Content as string ?? "Dell";
     bool IsLenovo => DriverVendor == "Lenovo";
     bool IsHp => DriverVendor == "HP";
-    bool IndividualSupported => !IsHp; // HP: só pack por enquanto
+    bool IndividualSupported => true; // Dell, Lenovo e HP suportam avulso
     IDriverPackCatalog PackCatalog => IsHp ? _hpCatalog : IsLenovo ? _lenovoCatalog : _driverCatalog;
-    IDriverComponentCatalog ComponentCatalog => IsLenovo ? _lenovoComponentCatalog : _componentCatalog;
+    IDriverComponentCatalog ComponentCatalog => IsHp ? _hpComponentCatalog : IsLenovo ? _lenovoComponentCatalog : _componentCatalog;
     CancellationTokenSource? _cts;
     bool _syncingCards;
 
@@ -412,18 +413,13 @@ public partial class MainWindow : Window
         PanelDriverSearch.Visibility = Visibility.Visible;
     }
 
-    // Troca de fabricante (Dell/Lenovo). Ambos têm pack e individual.
+    // Troca de fabricante (Dell/Lenovo/HP). Todos têm pack e individual.
     void DriverVendor_Changed(object sender, SelectionChangedEventArgs e)
     {
         // DriverComponentsCard é criado depois do ComboBox no XAML: se ainda é null, o parse não terminou.
         if (DriverComponentsCard == null) return;
-        RbDrvIndividual.IsEnabled = IndividualSupported;
-        RbDrvIndividual.ToolTip = IndividualSupported ? null : "Disponível para Dell e Lenovo.";
-        if (!IndividualSupported && DriverIndividualMode)
-        {
-            RbDrvPack.IsChecked = true; // HP só tem pack -> dispara DriverMode_Changed (reset + carrega)
-            return;
-        }
+        RbDrvIndividual.IsEnabled = true;
+        RbDrvIndividual.ToolTip = null;
         _dellModels = new(); _componentModels = new(); _individualDrivers.Clear();
         _drvSelecting = true; LstDriverModels.ItemsSource = null; _drvSelecting = false;
         ShowModelList();

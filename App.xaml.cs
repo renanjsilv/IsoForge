@@ -135,6 +135,29 @@ public partial class App : Application
             return;
         }
 
+        // Diagnóstico: valida os drivers individuais da HP (ref file por SysID + parse real).
+        if (e.Args.Any(a => a.Equals("--dumphpindiv", StringComparison.OrdinalIgnoreCase)))
+        {
+            var outFile = Path.Combine(Path.GetTempPath(), "isoforge_hpindiv.txt");
+            try
+            {
+                var logs = new List<string>();
+                var lg = new Progress<string>(s => logs.Add(s));
+                var cat = new HpComponentCatalog();
+                await cat.EnsureLoadedAsync(lg, CancellationToken.None);
+                var models = cat.Models();
+                var pick = models.FirstOrDefault(m => m.Name.Contains("EliteBook", StringComparison.OrdinalIgnoreCase))
+                    ?? models.FirstOrDefault(m => m.Name.Contains("ProBook", StringComparison.OrdinalIgnoreCase))
+                    ?? models.FirstOrDefault();
+                var drivers = pick != null ? await cat.DriversForModelAsync(pick, lg, CancellationToken.None) : new();
+                var sample = string.Join("\n", drivers.Take(20).Select(d => $"  [{d.Category}] {d.Name} — {d.SizeText}"));
+                File.WriteAllText(outFile, $"OK modelos={models.Count}\nmodelo={pick?.Name} SysID={pick?.SystemId} drivers={drivers.Count}\nLOGS:\n  {string.Join("\n  ", logs)}\n{sample}\n");
+            }
+            catch (Exception ex) { File.WriteAllText(outFile, $"ERRO: {ex}"); }
+            Shutdown(0);
+            return;
+        }
+
         new MainWindow().Show();
     }
 }
