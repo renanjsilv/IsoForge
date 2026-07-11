@@ -420,6 +420,7 @@
                                               SelectionChanged="DriverVendor_Changed">
                                         <ComboBoxItem Content="Dell" IsSelected="True"/>
                                         <ComboBoxItem Content="Lenovo"/>
+                                        <ComboBoxItem Content="HP"/>
                                     </ComboBox>
                                     <Button DockPanel.Dock="Right" Content="Recarregar" Style="{StaticResource Secondary}"
                                             HorizontalAlignment="Right" Click="LoadDrivers_Click"

@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     readonly ConcurrentDictionary<AppId, FetchResult> _fetched = new();
     readonly DellDriverCatalog _driverCatalog = new();
     readonly LenovoDriverCatalog _lenovoCatalog = new();
+    readonly HpDriverCatalog _hpCatalog = new();
     readonly DellComponentCatalog _componentCatalog = new();
     readonly LenovoComponentCatalog _lenovoComponentCatalog = new();
     List<DriverPackModel> _dellModels = new();
@@ -26,9 +27,12 @@ public partial class MainWindow : Window
     readonly ObservableCollection<DriverCategoryVm> _driverCategories = new();
     readonly ObservableCollection<DriverItemVm> _individualDrivers = new();
     bool DriverIndividualMode => RbDrvIndividual?.IsChecked == true;
-    // Fabricante ativo. Pack e individual existem para Dell e Lenovo.
-    bool IsLenovo => (CmbDriverVendor?.SelectedItem as ComboBoxItem)?.Content as string == "Lenovo";
-    IDriverPackCatalog PackCatalog => IsLenovo ? _lenovoCatalog : _driverCatalog;
+    // Fabricante ativo. Pack: Dell/Lenovo/HP. Individual (avulso): Dell e Lenovo.
+    string DriverVendor => (CmbDriverVendor?.SelectedItem as ComboBoxItem)?.Content as string ?? "Dell";
+    bool IsLenovo => DriverVendor == "Lenovo";
+    bool IsHp => DriverVendor == "HP";
+    bool IndividualSupported => !IsHp; // HP: só pack por enquanto
+    IDriverPackCatalog PackCatalog => IsHp ? _hpCatalog : IsLenovo ? _lenovoCatalog : _driverCatalog;
     IDriverComponentCatalog ComponentCatalog => IsLenovo ? _lenovoComponentCatalog : _componentCatalog;
     CancellationTokenSource? _cts;
     bool _syncingCards;
@@ -397,6 +401,13 @@ public partial class MainWindow : Window
     {
         // DriverComponentsCard é criado depois do ComboBox no XAML: se ainda é null, o parse não terminou.
         if (DriverComponentsCard == null) return;
+        RbDrvIndividual.IsEnabled = IndividualSupported;
+        RbDrvIndividual.ToolTip = IndividualSupported ? null : "Disponível para Dell e Lenovo.";
+        if (!IndividualSupported && DriverIndividualMode)
+        {
+            RbDrvPack.IsChecked = true; // HP só tem pack -> dispara DriverMode_Changed (reset + carrega)
+            return;
+        }
         _dellModels = new(); _componentModels = new(); _individualDrivers.Clear();
         _drvSelecting = true; LstDriverModels.ItemsSource = null; _drvSelecting = false;
         ShowModelList();
@@ -456,7 +467,7 @@ public partial class MainWindow : Window
             }
             else
             {
-                var vendor = IsLenovo ? "Lenovo" : "Dell";
+                var vendor = DriverVendor;
                 var catalog = PackCatalog; // avalia na thread da UI (lê o ComboBox)
                 AppendLog($"Carregando catálogo de drivers da {vendor}...");
                 _dellModels = await Task.Run(() => catalog.FetchModelsAsync(progress, CancellationToken.None));

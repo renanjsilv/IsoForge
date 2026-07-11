@@ -57,9 +57,9 @@ few-clicks, from-scratch install.
 - **Windows light or dark theme** — sets the apps/system theme at first logon and for new users.
 - **Taskbar alignment** — center (Windows 11 default) or left (classic style), applied at
   first logon and for new users.
-- **Per-model driver injection (Dell & Lenovo)** — dedicated tab. Search the model in the
+- **Per-model driver injection (Dell, Lenovo & HP)** — dedicated tab. Search the model in the
   vendor's official catalog and choose:
-  - **Full pack** (Dell & Lenovo) — downloads the model's driver pack; you tick which components to inject.
+  - **Full pack** (Dell, Lenovo & HP) — downloads the model's driver pack; you tick which components to inject.
   - **Individual drivers** (Dell & Lenovo) — downloads **only** the drivers you tick (saves
     bandwidth), via the vendor's individual update packages.
   Injection is done on the ISO via `autounattend` (offlineServicing) + `pnputil`.
