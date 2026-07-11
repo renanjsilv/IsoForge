@@ -4,16 +4,18 @@ using System.Windows.Media;
 namespace IsoForge;
 
 /// <summary>
-/// Tema escuro/claro da INTERFACE do IsoForge. Os brushes da paleta são compartilhados
-/// (mesma instância) por todo o app, então trocar a cor deles reflete ao vivo em tudo que
-/// usa {StaticResource ...}.
+/// Tema escuro/claro da INTERFACE do IsoForge. O WPF congela (freeze) os brushes de um
+/// ResourceDictionary do app, então não dá para mudar a cor deles em runtime. Em vez disso,
+/// trocamos a ENTRADA do recurso por um brush novo; os controles referenciam essas cores por
+/// {DynamicResource ...}, que re-resolve a entrada e atualiza a tela ao vivo.
 /// </summary>
 public static class ThemeService
 {
     static void Set(string key, string hex)
     {
-        if (Application.Current?.Resources[key] is SolidColorBrush b && !b.IsFrozen)
-            b.Color = (Color)ColorConverter.ConvertFromString(hex);
+        var res = Application.Current?.Resources;
+        if (res == null) return;
+        res[key] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
     }
 
     public static void Apply(bool dark)
@@ -27,6 +29,16 @@ public static class ThemeService
             Set("TextMain", "#E6EDF3");
             Set("TextMuted", "#93A1B0");
             Set("AccentSoft", "#17335C");
+            // Caixas de aviso/info: fundo escuro, borda e texto claros e legíveis.
+            Set("WarnBg", "#2A2410");
+            Set("WarnBorder", "#5C4A16");
+            Set("WarnText", "#FCD34D");
+            Set("InfoBg", "#12233D");
+            Set("InfoBorder", "#25436E");
+            Set("InfoText", "#9EC5FE");
+            Set("ChipBg", "#21262D");
+            Set("InputDisabledBg", "#1B2027");
+            Set("SubtleBg", "#12161C");
         }
         else
         {
@@ -37,6 +49,15 @@ public static class ThemeService
             Set("TextMain", "#0F172A");
             Set("TextMuted", "#64748B");
             Set("AccentSoft", "#DBEAFE");
+            Set("WarnBg", "#FEF3C7");
+            Set("WarnBorder", "#FCD34D");
+            Set("WarnText", "#92400E");
+            Set("InfoBg", "#EFF6FF");
+            Set("InfoBorder", "#BFDBFE");
+            Set("InfoText", "#1E3A8A");
+            Set("ChipBg", "#F1F5F9");
+            Set("InputDisabledBg", "#F1F5F9");
+            Set("SubtleBg", "#F8FAFC");
         }
     }
 }

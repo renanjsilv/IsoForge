@@ -386,8 +386,8 @@ public partial class MainWindow : Window
     void UpdateThemeButton()
     {
         if (BtnTheme == null) return;
-        // Mostra o destino do clique: lua = mudar p/ escuro; sol = mudar p/ claro.
-        BtnTheme.Content = _config.AppDarkTheme ? ((char)0xE706).ToString() : ((char)0xE708).ToString();
+        // Mostra o destino do clique: sol (☀) = mudar p/ claro; lua (☾) = mudar p/ escuro.
+        BtnTheme.Content = _config.AppDarkTheme ? "☀" : "☾";
         BtnTheme.ToolTip = _config.AppDarkTheme ? "Mudar para tema claro" : "Mudar para tema escuro";
     }
 

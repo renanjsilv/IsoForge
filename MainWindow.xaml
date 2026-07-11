@@ -7,7 +7,7 @@
         WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
-        Background="{StaticResource WindowBg}">
+        Background="{DynamicResource WindowBg}">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="232"/>
@@ -52,14 +52,14 @@
         </Border>
 
         <!-- ============ TOPBAR ============ -->
-        <Border Grid.Column="1" Grid.Row="0" Background="{StaticResource CardBg}"
-                BorderBrush="{StaticResource CardBorder}" BorderThickness="0,0,0,1" Padding="24,0">
+        <Border Grid.Column="1" Grid.Row="0" Background="{DynamicResource CardBg}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="24,0">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="BtnTheme" Style="{StaticResource Secondary}" Padding="10,7" Margin="0,0,12,0"
-                            FontFamily="Segoe MDL2 Assets" Content="&#xE708;" Click="ToggleTheme_Click"
+                    <Button x:Name="BtnTheme" Style="{StaticResource Secondary}" Padding="11,6" Margin="0,0,12,0"
+                            FontFamily="Segoe UI Symbol, Segoe UI" FontSize="15" Content="&#x263E;" Click="ToggleTheme_Click"
                             ToolTip="Alternar tema claro/escuro do IsoForge"/>
-                    <TextBlock Text="Perfil" Foreground="{StaticResource TextMuted}" FontSize="12.5" Margin="0,0,8,0"/>
+                    <TextBlock Text="Perfil" Foreground="{DynamicResource TextMuted}" FontSize="12.5" Margin="0,0,8,0"/>
                     <ComboBox x:Name="CmbProfile" Width="170" Height="34"
                               ToolTip="Salve/carregue várias configurações nomeadas (ex.: Matriz, Cliente X)."
                               SelectionChanged="Profile_SelectionChanged"/>
@@ -68,7 +68,7 @@
                     <Button Content="Excluir" Style="{StaticResource Secondary}" Padding="12,7" Margin="6,0,0,0" Click="DeleteProfile_Click"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="{StaticResource AccentSoft}" CornerRadius="9" Width="34" Height="34" Margin="0,0,11,0">
+                    <Border Background="{DynamicResource AccentSoft}" CornerRadius="9" Width="34" Height="34" Margin="0,0,11,0">
                         <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{StaticResource Accent}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    Text="{Binding SelectedItem.Tag, ElementName=MainTabs}"/>
@@ -126,8 +126,8 @@
                         <GroupBox Header="Instalação do disco">
                             <StackPanel>
                                 <CheckBox x:Name="ChkAutoDisk" Content="Selecionar o disco automaticamente e instalar (nunca o pendrive)"/>
-                                <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
-                                    <TextBlock TextWrapping="Wrap" Foreground="#92400E"
+                                <Border Background="{DynamicResource WarnBg}" BorderBrush="{DynamicResource WarnBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource WarnText}"
                                                Text="Ao ligar, o Windows não pergunta o disco: escolhe o primeiro disco fixo (nunca USB), apaga-o e instala. O pendrive de boot nunca é tocado. ⚠ Apaga o disco de destino — teste em VM antes de usar em produção."/>
                                 </Border>
                             </StackPanel>
@@ -153,7 +153,7 @@
                                     <TextBox x:Name="TxtWifiSsid" Grid.Column="1" Margin="0,4"/>
                                     <TextBlock Grid.Row="1" Text="Senha:" VerticalAlignment="Center"/>
                                     <TextBox x:Name="TxtWifiPassword" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
-                                    <TextBlock Grid.Row="2" Grid.Column="1" Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
                                                Text="Rede WPA2-PSK (padrão doméstico/escritório). Deixe a senha em branco para redes abertas. A senha fica embutida na ISO — trate a ISO como material sensível."/>
                                 </Grid>
                             </StackPanel>
@@ -172,9 +172,9 @@
                                              IsChecked="True" Checked="Mode_Changed"/>
                                 <RadioButton x:Name="RbModeEntra" Margin="0,8,0,0" Checked="Mode_Changed"
                                              Content="Entra ID — login corporativo/estudante no 1º boot (WiFi + e-mail + ingresso)"/>
-                                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="28,8,0,0">
+                                <Border Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="28,8,0,0">
                                     <StackPanel>
-                                        <TextBlock TextWrapping="Wrap" Foreground="{StaticResource TextMuted}"
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
                                                    Text="No modo Entra ID a máquina inicia na tela de conta corporativa. Os programas já vêm instalados (rodam como SYSTEM antes do login) e o usuário local abaixo é o único administrador."/>
                                         <CheckBox x:Name="ChkDemoteEntra" Margin="0,10,0,0" IsChecked="True"
                                                   Content="Remover o usuário Entra do grupo Administradores no 1º logon"/>
@@ -239,9 +239,9 @@
                                 <TextBox x:Name="TxtProductKey" Grid.Column="3" Margin="16,4,0,4" IsEnabled="False"
                                          ToolTip="Cole aqui a SUA chave/licença para ativação. As chaves da lista são genéricas (só escolhem a edição)."/>
 
-                                <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1"
+                                <Border Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1"
                                         CornerRadius="8" Padding="10,8" Margin="0,4,0,0">
-                                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="#1E3A8A"
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource InfoText}"
                                                Text="As chaves das edições acima são as chaves genéricas públicas da Microsoft (KMS client setup keys), usadas apenas para SELECIONAR a edição durante a instalação. Elas NÃO ativam o Windows e não substituem uma licença — a ativação é feita depois com a sua licença ou KMS. É um recurso oficial de implantação da Microsoft (documentado), não pirataria. Para ativar, escolha 'Chave personalizada' e informe a sua licença."/>
                                 </Border>
 
@@ -260,7 +260,7 @@
                     <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
                         <GroupBox Header="Escolha os programas que virão instalados">
                             <StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,14" TextWrapping="Wrap"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,0,0,14" TextWrapping="Wrap"
                                            Text="Clique nos programas que quer na imagem. O IsoForge baixa a versão mais recente sozinho e os instala em silêncio no primeiro logon. Ao selecionar, as opções de cada programa aparecem abaixo."/>
                                 <WrapPanel>
                                     <ToggleButton x:Name="CardOffice"   Style="{StaticResource AppCard}" Content="Office 365"    Tag="&#xE8A5;" Click="CardOffice_Click"/>
@@ -275,17 +275,17 @@
                                     <Button Content="+  Adicionar outro" Style="{StaticResource Secondary}" Width="196" Height="96" Margin="0,0,14,14" Click="AddCustomApp_Click"/>
                                 </WrapPanel>
 
-                                <Border Background="#F8FAFC" BorderBrush="{StaticResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,4,0,0">
+                                <Border Background="{DynamicResource SubtleBg}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,4,0,0">
                                     <StackPanel>
-                                        <TextBlock Text="Selecionados" FontWeight="SemiBold" FontSize="12" Foreground="{StaticResource TextMuted}" Margin="0,0,0,8"/>
-                                        <TextBlock x:Name="EmptyAppsHint" Text="Nenhum programa selecionado ainda." Foreground="{StaticResource TextMuted}" FontSize="12.5"/>
+                                        <TextBlock Text="Selecionados" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,8"/>
+                                        <TextBlock x:Name="EmptyAppsHint" Text="Nenhum programa selecionado ainda." Foreground="{DynamicResource TextMuted}" FontSize="12.5"/>
                                         <ItemsControl x:Name="AppsChips">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border Background="{StaticResource AccentSoft}" CornerRadius="14" Padding="12,6" Margin="0,0,8,4">
+                                                    <Border Background="{DynamicResource AccentSoft}" CornerRadius="14" Padding="12,6" Margin="0,0,8,4">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="{Binding Name}" Foreground="{StaticResource Accent}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
                                                             <Button Style="{StaticResource AppChipRemove}" Tag="{Binding}" Click="RemoveAppChip_Click"/>
@@ -340,7 +340,7 @@
                                     <Button Grid.Column="2" Content="Baixar Office..." Click="DownloadOffice_Click"/>
                                     <Button Grid.Column="3" Content="Procurar..." Style="{StaticResource Secondary}" Click="BrowseOfficeSource_Click"/>
                                 </Grid>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
                                            Text="Online: cada máquina baixa o Office no 1º logon (ISO menor). Offline: o Office é embutido na ISO e instala sem internet."/>
                             </StackPanel>
                         </GroupBox>
@@ -349,7 +349,7 @@
                         <GroupBox x:Name="FortiConfigCard" Header="Opções do FortiClient VPN" Visibility="Collapsed">
                             <StackPanel>
                                 <TextBlock FontWeight="SemiBold" Text="Método recomendado — copiar de um FortiClient já configurado" Margin="0,0,0,6"/>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"
                                            Text="Configure os túneis uma vez no seu FortiClient e clique em 'Capturar deste PC' (traz gateway + senha cifrada, formato nativo). É o mais confiável."/>
                                 <DockPanel Margin="0,0,0,14">
                                     <Button DockPanel.Dock="Right" Content="Capturar deste PC" Click="CaptureFortiReg_Click"
@@ -361,8 +361,8 @@
 
                                 <Expander Header="Digitar os túneis manualmente (experimental)">
                                     <StackPanel Margin="0,10,0,0">
-                                        <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
-                                            <TextBlock TextWrapping="Wrap" Foreground="#92400E" FontSize="12"
+                                        <Border Background="{DynamicResource WarnBg}" BorderBrush="{DynamicResource WarnBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource WarnText}" FontSize="12"
                                                        Text="O import por texto pode instabilizar o FortiClient em algumas versões. Prefira 'Capturar deste PC'. Marque abaixo apenas se quiser mesmo usar este método."/>
                                         </Border>
                                         <CheckBox x:Name="ChkVpnTextImport" Margin="0,0,0,8"
@@ -404,7 +404,7 @@
                     <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
                         <GroupBox Header="Drivers do fabricante (injeção automática por modelo)">
                             <StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,12"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,12"
                                            Text="Baixa os drivers oficiais do modelo (rede, chipset, vídeo…) e injeta na ISO, para a máquina já subir com tudo funcionando. Modelos corporativos Dell (Latitude, OptiPlex, Precision, XPS) e Lenovo (ThinkPad, ThinkCentre)."/>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Modo:" Width="90" VerticalAlignment="Center"/>
@@ -415,7 +415,7 @@
                                                      Content="Drivers individuais" Checked="DriverMode_Changed"/>
                                     </StackPanel>
                                 </DockPanel>
-                                <TextBlock x:Name="TxtDriverModeHint" Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                                <TextBlock x:Name="TxtDriverModeHint" Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
                                            Text="Pack completo: baixa tudo do modelo de uma vez (GBs), sem executar nada. Garantido."/>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Fabricante:" Width="90" VerticalAlignment="Center"/>
@@ -454,7 +454,7 @@
                                                     <CheckBox IsChecked="{Binding Include, Mode=TwoWay}" Margin="0,3,0,0">
                                                         <TextBlock TextWrapping="Wrap">
                                                             <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                            <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
+                                                            <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource TextMuted}"/>
                                                         </TextBlock>
                                                     </CheckBox>
                                                 </DataTemplate>
@@ -469,7 +469,7 @@
                                     <Button x:Name="BtnDriverClear" DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}"
                                             HorizontalAlignment="Right" Click="ClearDriver_Click"/>
                                     <TextBlock x:Name="TxtDriverStatus" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextMuted}" FontSize="12.5" Text="Nenhum driver selecionado."/>
+                                               Foreground="{DynamicResource TextMuted}" FontSize="12.5" Text="Nenhum driver selecionado."/>
                                 </DockPanel>
                             </StackPanel>
                         </GroupBox>
@@ -477,7 +477,7 @@
                         <GroupBox x:Name="DriverComponentsCard" Header="Componentes a instalar" Visibility="Collapsed">
                             <StackPanel>
                                 <DockPanel Margin="0,0,0,8">
-                                    <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap"
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap"
                                                Text="Marque só o que quer injetar (ex.: apenas Rede). Por padrão, tudo vem marcado."/>
                                     <Button DockPanel.Dock="Right" Content="Todos" Style="{StaticResource Secondary}" Padding="10,6" Margin="8,0,0,0" Click="DriverSelectAll_Click"/>
                                     <Button DockPanel.Dock="Right" Content="Nenhum" Style="{StaticResource Secondary}" Padding="10,6" Click="DriverSelectNone_Click"/>
@@ -488,7 +488,7 @@
                                             <CheckBox IsChecked="{Binding Include, Mode=TwoWay}" Margin="0,4,0,0">
                                                 <TextBlock>
                                                     <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
-                                                    <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
+                                                    <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource TextMuted}"/>
                                                 </TextBlock>
                                             </CheckBox>
                                         </DataTemplate>
@@ -521,7 +521,7 @@
                                                      Content="🌙  Escuro"/>
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
                                            Text="Define o tema de aplicativos e do sistema no primeiro logon (e para novos usuários). 'Padrão do Windows' não altera nada."/>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -538,7 +538,7 @@
                                                      Content="Esquerda"/>
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
                                            Text="Posição dos ícones da barra de tarefas no primeiro logon (e para novos usuários). 'Padrão do Windows' não altera nada."/>
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="Papel de parede:" Width="150" VerticalAlignment="Center"/>
@@ -557,7 +557,7 @@
 
                         <GroupBox Header="Otimização do Windows (debloat)">
                             <StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,10"
                                            Text="Aplicado no primeiro logon. Mantém apps essenciais (Loja, Calculadora, Fotos, Terminal…)."/>
                                 <CheckBox x:Name="ChkDebloatApps" Content="Remover apps de fábrica (Xbox, jogos, notícias, ajuda, mapas, etc.)"/>
                                 <CheckBox x:Name="ChkDebloatCopilot" Content="Desativar o Windows Copilot" Margin="0,6,0,0"/>
@@ -571,7 +571,7 @@
                         <GroupBox Header="Relatório de provisionamento">
                             <StackPanel>
                                 <CheckBox x:Name="ChkReport" Content="Gerar relatório na área de trabalho ao final do 1º logon" IsChecked="True"/>
-                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="24,4,0,0"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="24,4,0,0"
                                            Text="HTML com o que foi configurado (apps, drivers, VPN, tema…) e o resultado real da instalação (lido do log)."/>
                             </StackPanel>
                         </GroupBox>
@@ -581,9 +581,9 @@
                                 <CheckBox x:Name="ChkUnitSelection" Content="Perguntar a unidade ao instalar e nomear a máquina automaticamente"
                                           IsChecked="False" Checked="UnitSelection_Changed" Unchecked="UnitSelection_Changed"/>
                                 <StackPanel x:Name="PanelUnit" Margin="28,10,0,0" IsEnabled="False">
-                                    <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,8"
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,8"
                                                Text="No 1º logon aparece uma tela para escolher a unidade. O nome da máquina vira: PREFIXO + número de série do equipamento."/>
-                                    <Border Background="{StaticResource AccentSoft}" CornerRadius="10" Padding="14,10" Margin="0,0,0,12">
+                                    <Border Background="{DynamicResource AccentSoft}" CornerRadius="10" Padding="14,10" Margin="0,0,0,12">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock FontFamily="Segoe MDL2 Assets" Text="&#xE7F4;" FontSize="16" Foreground="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                             <TextBlock x:Name="TxtUnitPreview" Foreground="{StaticResource Accent}" FontWeight="SemiBold" FontSize="13"
@@ -641,22 +641,22 @@
                     <StackPanel Margin="24,18,24,8" Style="{StaticResource TabPage}">
                         <GroupBox Header="Imagem golden — Windows com tudo já instalado">
                             <StackPanel>
-                                <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,12" TextWrapping="Wrap"
+                                <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,0,0,12" TextWrapping="Wrap"
                                            Text="Uma imagem golden já sobe com os aplicativos instalados — sem instalar nada nem usar internet no primeiro boot. O IsoForge instala numa VM de teste temporária os apps escolhidos na aba Aplicativos, congela e coloca dentro da ISO."/>
 
-                                <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                                <Border Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
                                     <StackPanel>
-                                        <TextBlock Text="Geração automática (recomendado)" FontWeight="SemiBold" FontSize="15" Foreground="{StaticResource TextMain}"/>
-                                        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,6,0,10" TextWrapping="Wrap"
+                                        <TextBlock Text="Geração automática (recomendado)" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource TextMain}"/>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,6,0,10" TextWrapping="Wrap"
                                                    Text="Cria uma VM Hyper-V invisível, instala os apps, faz sysprep e captura a imagem — tudo sozinho."/>
-                                        <Border Background="White" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                        <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                                             <StackPanel>
-                                                <TextBlock Text="Será instalado na imagem (aba Aplicativos):" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock Text="Será instalado na imagem (aba Aplicativos):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextMain}"/>
                                                 <TextBlock x:Name="TxtGoldenSummary" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{StaticResource Accent}" FontWeight="SemiBold"/>
-                                                <TextBlock x:Name="TxtGoldenOfficeNote" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{StaticResource TextMuted}"/>
+                                                <TextBlock x:Name="TxtGoldenOfficeNote" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
                                             </StackPanel>
                                         </Border>
-                                        <TextBlock Foreground="{StaticResource TextMuted}" Margin="0,0,0,10" FontSize="12" TextWrapping="Wrap"
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,0,0,10" FontSize="12" TextWrapping="Wrap"
                                                    Text="Requisitos: Hyper-V habilitado, IsoForge como Administrador, ~40 GB livres e 30–60 min."/>
                                         <Button x:Name="BtnGoldenAuto" Style="{StaticResource Cta}" HorizontalAlignment="Left"
                                                 Content="Gerar imagem golden automaticamente" Click="GoldenAuto_Click"/>
@@ -684,11 +684,11 @@
         </TabControl>
 
         <!-- ============ RODAPÉ: ações + status/downloads ============ -->
-        <Border Grid.Column="1" Grid.Row="2" Background="{StaticResource CardBg}"
-                BorderBrush="{StaticResource CardBorder}" BorderThickness="0,1,0,0" Padding="24,14">
+        <Border Grid.Column="1" Grid.Row="2" Background="{DynamicResource CardBg}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0" Padding="24,14">
             <StackPanel>
                 <DockPanel>
-                    <Border DockPanel.Dock="Right" Background="#F1F5F9" CornerRadius="10" Padding="14,8" VerticalAlignment="Center">
+                    <Border DockPanel.Dock="Right" Background="{DynamicResource ChipBg}" CornerRadius="10" Padding="14,8" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse x:Name="StatusDot" Width="9" Height="9" Fill="{StaticResource Accent}" VerticalAlignment="Center" Margin="0,0,9,0">
                                 <Ellipse.Triggers>
@@ -701,7 +701,7 @@
                                     </EventTrigger>
                                 </Ellipse.Triggers>
                             </Ellipse>
-                            <TextBlock x:Name="TxtHeaderStatus" Foreground="#475569" FontSize="12.5" FontWeight="SemiBold"
+                            <TextBlock x:Name="TxtHeaderStatus" Foreground="{DynamicResource TextMuted}" FontSize="12.5" FontWeight="SemiBold"
                                        VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis"
                                        TextWrapping="NoWrap" Text="Pronto"
                                        ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>

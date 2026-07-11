@@ -6,6 +6,13 @@ namespace IsoForge;
 
 public partial class App : Application
 {
+    // Ao fechar o app, limpa o cache (drivers baixados + pastas de trabalho). A ISO gerada fica.
+    protected override void OnExit(ExitEventArgs e)
+    {
+        CacheCleaner.Clean();
+        base.OnExit(e);
+    }
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
