@@ -51,7 +51,9 @@ public static class SetupCompleteGenerator
         InstallScriptGenerator.AppendAppInstalls(sb, c);
         InstallScriptGenerator.AppendAppearance(sb, c);
         InstallScriptGenerator.AppendForti(sb, c);
+        InstallScriptGenerator.AppendDebloat(sb, c);
         InstallScriptGenerator.AppendPostScript(sb, c);
+        InstallScriptGenerator.AppendReport(sb, c);
 
         // 3) Seleção de unidade no 1º logon (Entra ID): agenda a tela + o rename (SYSTEM).
         if (c.UseUnitSelection)

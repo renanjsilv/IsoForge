@@ -62,6 +62,7 @@ public static class InstallScriptGenerator
         AppendAppInstalls(sb, c);
         AppendAppearance(sb, c);
         AppendForti(sb, c);
+        if (!goldenAudit) AppendDebloat(sb, c);
 
         // Expiração de senha do usuário local (não no modo golden — usuário ainda não existe)
         if (!goldenAudit && !string.IsNullOrWhiteSpace(c.UserName))
@@ -79,6 +80,9 @@ public static class InstallScriptGenerator
         // Script personalizado (não no modo golden — roda no deploy final)
         if (!goldenAudit)
             AppendPostScript(sb, c);
+
+        // Relatório de provisionamento por último (lê o install.log já completo).
+        if (!goldenAudit) AppendReport(sb, c);
 
         sb.AppendLine("echo IsoForge - fim: %date% %time%>> \"%LOGFILE%\"");
 
@@ -270,6 +274,25 @@ public static class InstallScriptGenerator
         if (!ExtraScriptsGenerator.HasFortiConfig(c)) return;
         sb.AppendLine("echo [FortiClient VPN]>> \"%LOGFILE%\"");
         sb.AppendLine($"powershell -NoProfile -ExecutionPolicy Bypass -File \"{SetupDirOnDisk}\\{ExtraScriptsGenerator.FortiFileName}\">> \"%LOGFILE%\" 2>&1");
+        sb.AppendLine();
+    }
+
+    /// <summary>Otimização/debloat (chama o Debloat.ps1 em C:\Setup).</summary>
+    internal static void AppendDebloat(StringBuilder sb, BuildConfig c)
+    {
+        if (!DebloatGenerator.Has(c)) return;
+        sb.AppendLine("echo [Otimizacao/debloat]>> \"%LOGFILE%\"");
+        sb.AppendLine("echo Otimizando o Windows (debloat)...");
+        sb.AppendLine($"powershell -NoProfile -ExecutionPolicy Bypass -File \"{SetupDirOnDisk}\\{DebloatGenerator.FileName}\">> \"%LOGFILE%\" 2>&1");
+        sb.AppendLine();
+    }
+
+    /// <summary>Relatório de provisionamento (chama o Report.ps1 em C:\Setup).</summary>
+    internal static void AppendReport(StringBuilder sb, BuildConfig c)
+    {
+        if (!c.GenerateReport) return;
+        sb.AppendLine("echo [Relatorio de provisionamento]>> \"%LOGFILE%\"");
+        sb.AppendLine($"powershell -NoProfile -ExecutionPolicy Bypass -File \"{SetupDirOnDisk}\\{ReportGenerator.FileName}\">> \"%LOGFILE%\" 2>&1");
         sb.AppendLine();
     }
 

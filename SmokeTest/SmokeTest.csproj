@@ -22,6 +22,8 @@
     <Compile Include="..\Core\UnitSelectorGenerator.cs" Link="Core\UnitSelectorGenerator.cs" />
     <Compile Include="..\Core\OfficeConfig.cs" Link="Core\OfficeConfig.cs" />
     <Compile Include="..\Core\GoldenImageScripts.cs" Link="Core\GoldenImageScripts.cs" />
+    <Compile Include="..\Core\DebloatGenerator.cs" Link="Core\DebloatGenerator.cs" />
+    <Compile Include="..\Core\ReportGenerator.cs" Link="Core\ReportGenerator.cs" />
     <Compile Include="..\Core\DriverInfScanner.cs" Link="Core\DriverInfScanner.cs" />
     <Compile Include="..\Core\IDriverComponentCatalog.cs" Link="Core\IDriverComponentCatalog.cs" />
     <Compile Include="..\Core\DellComponentCatalog.cs" Link="Core\DellComponentCatalog.cs" />

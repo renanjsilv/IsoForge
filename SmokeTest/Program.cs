@@ -76,6 +76,24 @@ Check(cmd.Contains("_MSIExecute"), "install.cmd espera o Windows Installer livre
 Check(cmd.Contains("Get-LocalUser -Name 'suporte'"), "install.cmd só ajusta a senha se o usuário existir (log limpo no Sandbox)");
 Check(cmd.Contains("[1/") && cmd.Contains("Progresso geral:") && cmd.Contains("title IsoForge - Instalando"), "install.cmd mostra progresso (X/N + barra + título da janela)");
 
+// ---- Debloat + relatório ----
+var cfgDeb = new BuildConfig { UserName = "s", Password = "x",
+    DebloatRemoveApps = true, DebloatDisableTelemetry = true, DebloatRemoveOneDrive = true,
+    DebloatDisableStartAds = true, DebloatDisableCopilot = true, DebloatRemoveTeamsChat = true, GenerateReport = true };
+Check(DebloatGenerator.Has(cfgDeb), "debloat: Has verdadeiro quando há opção marcada");
+Check(!DebloatGenerator.Has(new BuildConfig()), "debloat: Has falso quando nada marcado");
+var debPs = DebloatGenerator.Generate(cfgDeb);
+Check(debPs.Contains("Remove-AppxProvisionedPackage") && debPs.Contains("Xbox"), "debloat: remove apps de fábrica (provisionados)");
+Check(debPs.Contains("AllowTelemetry") && debPs.Contains("DiagTrack"), "debloat: reduz telemetria");
+Check(debPs.Contains("OneDriveSetup.exe") && debPs.Contains("TurnOffWindowsCopilot"), "debloat: OneDrive + Copilot");
+Check(!debPs.Any(ch => ch > 126), "debloat: script é ASCII puro (não quebra o PowerShell)");
+var cmdDeb = InstallScriptGenerator.Generate(cfgDeb);
+Check(cmdDeb.Contains("Debloat.ps1"), "debloat: install.cmd chama o Debloat.ps1");
+Check(cmdDeb.Contains("Report.ps1"), "relatório: install.cmd chama o Report.ps1 no fim");
+var repPs = ReportGenerator.Generate(cfgDeb);
+Check(repPs.Contains("IsoForge-Provisionamento.html") && repPs.Contains("codigo de saida"), "relatório: gera HTML e lê o install.log");
+Check(!InstallScriptGenerator.Generate(new BuildConfig { UserName="s", Password="x", GenerateReport=false }).Contains("Report.ps1"), "relatório: desligado não chama o Report.ps1");
+
 // ---- Alinhamento da barra de tarefas ----
 var appTbLeft = ExtraScriptsGenerator.Appearance(null, null, WindowsThemeMode.Default, TaskbarAlignment.Left);
 Check(appTbLeft.Contains("TaskbarAl") && appTbLeft.Contains("-Value 0") && appTbLeft.Contains("/d 0 /f"), "barra: alinhamento à esquerda (TaskbarAl=0, inclusive hive padrão)");

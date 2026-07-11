@@ -476,6 +476,20 @@ public class IsoPipeline
             Log("Instalação com apps que precisam de internet: WaitForInternet.ps1 incluído (espera conexão e continua sozinho).");
         }
 
+        // 4c-2. Otimização (debloat) e relatório de provisionamento.
+        if (DebloatGenerator.Has(cfg))
+        {
+            File.WriteAllText(Path.Combine(setupDir, DebloatGenerator.FileName),
+                DebloatGenerator.Generate(cfg), new UTF8Encoding(true)); // BOM p/ PowerShell 5.1
+            Log("Otimização (debloat) incluída.");
+        }
+        if (cfg.GenerateReport)
+        {
+            File.WriteAllText(Path.Combine(setupDir, ReportGenerator.FileName),
+                ReportGenerator.Generate(cfg), new UTF8Encoding(true)); // BOM p/ PowerShell 5.1
+            Log("Relatório de provisionamento incluído (HTML na área de trabalho).");
+        }
+
         // 4d. Drivers do fabricante: copia os .inf para sources\$OEM$\$1\Drivers (=> C:\Drivers no
         // destino). O autounattend (offlineServicing) + pnputil no 1º logon fazem a injeção.
         if (!string.IsNullOrWhiteSpace(cfg.DriverPackPath) && Directory.Exists(cfg.DriverPackPath))

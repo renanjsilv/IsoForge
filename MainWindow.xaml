@@ -551,6 +551,27 @@
                             </StackPanel>
                         </GroupBox>
 
+                        <GroupBox Header="Otimização do Windows (debloat)">
+                            <StackPanel>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Aplicado no primeiro logon. Mantém apps essenciais (Loja, Calculadora, Fotos, Terminal…)."/>
+                                <CheckBox x:Name="ChkDebloatApps" Content="Remover apps de fábrica (Xbox, jogos, notícias, ajuda, mapas, etc.)"/>
+                                <CheckBox x:Name="ChkDebloatCopilot" Content="Desativar o Windows Copilot" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkDebloatTeams" Content="Remover o Teams pessoal (Chat)" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkDebloatOneDrive" Content="Desinstalar o OneDrive" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkDebloatAds" Content="Tirar sugestões/propagandas do menu Iniciar" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkDebloatTelemetry" Content="Reduzir telemetria (desliga o serviço DiagTrack)" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Relatório de provisionamento">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkReport" Content="Gerar relatório na área de trabalho ao final do 1º logon" IsChecked="True"/>
+                                <TextBlock Foreground="{StaticResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="24,4,0,0"
+                                           Text="HTML com o que foi configurado (apps, drivers, VPN, tema…) e o resultado real da instalação (lido do log)."/>
+                            </StackPanel>
+                        </GroupBox>
+
                         <GroupBox Header="Nome automático do computador por unidade">
                             <StackPanel>
                                 <CheckBox x:Name="ChkUnitSelection" Content="Perguntar a unidade ao instalar e nomear a máquina automaticamente"

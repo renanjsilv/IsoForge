@@ -1054,6 +1054,13 @@ public partial class MainWindow : Window
         _config.TaskbarAlign = RbTaskbarCenter.IsChecked == true ? TaskbarAlignment.Center
             : RbTaskbarLeft.IsChecked == true ? TaskbarAlignment.Left
             : TaskbarAlignment.Default;
+        _config.DebloatRemoveApps = ChkDebloatApps.IsChecked == true;
+        _config.DebloatDisableCopilot = ChkDebloatCopilot.IsChecked == true;
+        _config.DebloatRemoveTeamsChat = ChkDebloatTeams.IsChecked == true;
+        _config.DebloatRemoveOneDrive = ChkDebloatOneDrive.IsChecked == true;
+        _config.DebloatDisableStartAds = ChkDebloatAds.IsChecked == true;
+        _config.DebloatDisableTelemetry = ChkDebloatTelemetry.IsChecked == true;
+        _config.GenerateReport = ChkReport.IsChecked == true;
         _config.FortiClientRegImportPath = TxtFortiReg.Text.Trim();
         _config.VpnUseTextImport = ChkVpnTextImport.IsChecked == true;
         _config.VpnXAuth = RbXauthSave.IsChecked == true ? VpnXAuthMode.Save
@@ -1137,6 +1144,13 @@ public partial class MainWindow : Window
         RbTaskbarCenter.IsChecked = _config.TaskbarAlign == TaskbarAlignment.Center;
         RbTaskbarLeft.IsChecked = _config.TaskbarAlign == TaskbarAlignment.Left;
         RbTaskbarDefault.IsChecked = _config.TaskbarAlign == TaskbarAlignment.Default;
+        ChkDebloatApps.IsChecked = _config.DebloatRemoveApps;
+        ChkDebloatCopilot.IsChecked = _config.DebloatDisableCopilot;
+        ChkDebloatTeams.IsChecked = _config.DebloatRemoveTeamsChat;
+        ChkDebloatOneDrive.IsChecked = _config.DebloatRemoveOneDrive;
+        ChkDebloatAds.IsChecked = _config.DebloatDisableStartAds;
+        ChkDebloatTelemetry.IsChecked = _config.DebloatDisableTelemetry;
+        ChkReport.IsChecked = _config.GenerateReport;
         TxtFortiReg.Text = _config.FortiClientRegImportPath;
         ChkVpnTextImport.IsChecked = _config.VpnUseTextImport;
         RbXauthSave.IsChecked = _config.VpnXAuth == VpnXAuthMode.Save;

@@ -160,6 +160,17 @@ public class BuildConfig
     // Alinhamento da barra de tarefas (centro/esquerda) aplicado no 1º logon e para novos usuários.
     public TaskbarAlignment TaskbarAlign { get; set; } = TaskbarAlignment.Default;
 
+    // Otimização / debloat (aplicado no 1º logon)
+    public bool DebloatRemoveApps { get; set; }        // remove apps de fábrica (Xbox, Copilot, jogos…)
+    public bool DebloatDisableTelemetry { get; set; }  // telemetria/DiagTrack no mínimo
+    public bool DebloatRemoveOneDrive { get; set; }    // desinstala o OneDrive
+    public bool DebloatDisableStartAds { get; set; }   // tira sugestões/propagandas do Iniciar
+    public bool DebloatDisableCopilot { get; set; }    // desativa o Windows Copilot
+    public bool DebloatRemoveTeamsChat { get; set; }   // remove o Teams pessoal (Chat)
+
+    // Relatório de provisionamento (HTML na área de trabalho pública ao final do 1º logon).
+    public bool GenerateReport { get; set; } = true;
+
     // FortiClient VPN — vazio por padrão; adicione os seus túneis (ficam salvos localmente).
     public ObservableCollection<VpnTunnel> VpnTunnels { get; set; } = new();
     // Alternativa confiável: .reg exportado de um FortiClient já configurado (importado no 1º logon).
