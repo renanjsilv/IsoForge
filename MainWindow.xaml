@@ -1,0 +1,1136 @@
+<Window x:Class="IsoForge.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:IsoForge"
+        xmlns:ui="clr-namespace:IsoForge.Ui"
+        Title="IsoForge — Personalizador de ISO"
+        Icon="icon.ico"
+        Width="1180" Height="900" MinWidth="1020" MinHeight="720"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Background="{DynamicResource WindowBg}">
+    <Grid>
+        <!-- Shell = o app. Fica montado desde o inicio, atras da camada de escolha
+             do sistema; e por isso que a passagem entre as duas parece uma
+             transicao e nao a troca de um programa por outro. -->
+        <Grid x:Name="Shell">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="232"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="68"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <!-- Console proporcional, nao 140px cravados: a 768 de altura os 140
+                 comiam 18% da janela (com o console vazio) e a 1400 continuavam
+                 os mesmos 140. O piso mantem 3 linhas legiveis; o teto evita que
+                 o log roube a tela em monitor grande. -->
+            <RowDefinition x:Name="LogRow" Height="0.18*" MinHeight="96" MaxHeight="190"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============ SIDEBAR ============ -->
+        <Border Grid.Column="0" Grid.RowSpan="4" Background="{DynamicResource SidebarGradient}"
+                BorderBrush="{DynamicResource SidebarEdge}" BorderThickness="0,0,1,0"
+                ClipToBounds="True">
+            <Grid>
+            <!-- Fundo vivo da barra: claroes que derivam + brasas subindo na cor do
+                 sistema. Fica ATRAS do conteudo e nao recebe clique. -->
+            <Control x:Name="SidebarBackdrop" Style="{StaticResource SidebarSurface}"/>
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="68" Margin="18,0,0,0">
+                    <Image x:Name="SidebarMark" Source="icon.ico" Width="36" Height="36" VerticalAlignment="Center"/>
+                    <StackPanel VerticalAlignment="Center" Margin="10,0,0,0">
+                        <TextBlock Text="IsoForge" Foreground="{DynamicResource SidebarText}" FontSize="19" FontWeight="Bold"/>
+                        <TextBlock x:Name="TxtSidebarSubtitle" Text="Windows 11 ISO Studio"
+                                   Foreground="{DynamicResource SidebarTextMuted}" FontSize="10.5"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Bottom" Margin="18,0,18,16">
+                    <Border Height="1" Background="{DynamicResource SidebarHoverBg}" Margin="0,0,0,12"/>
+                    <TextBlock FontSize="11.5" ToolTip="Abrir o projeto no GitHub">
+                        <Hyperlink x:Name="LinkGithub" NavigateUri="https://github.com/renanjsilv/IsoForge"
+                                   RequestNavigate="Github_RequestNavigate"
+                                   Foreground="{DynamicResource SidebarTextMuted}" TextDecorations="{x:Null}">
+                            <Run x:Name="RunVersion" Text="v1.0.0"/>
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock FontSize="10.5" Margin="0,2,0,0" ToolTip="Abrir o projeto no GitHub">
+                        <Hyperlink NavigateUri="https://github.com/renanjsilv/IsoForge"
+                                   RequestNavigate="Github_RequestNavigate"
+                                   Foreground="{DynamicResource SidebarAccent}" TextDecorations="{x:Null}">
+                            github.com/renanjsilv/IsoForge
+                        </Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+                <Grid/>
+            </DockPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============ TOPBAR ============ -->
+        <Border x:Name="TopBar" Grid.Column="1" Grid.Row="0" Background="{DynamicResource CardBg}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,0,0,1" Padding="24,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="BtnChangeOs" Style="{StaticResource Secondary}" Padding="12,7" Margin="0,0,12,0"
+                            Content="Windows 11" Click="ChangeOs_Click"
+                            ToolTip="Trocar o sistema operacional que sera personalizado"/>
+                    <!-- O sol/lua e trocado no code-behind (ApplyThemeButton): sao
+                         caracteres Unicode comuns, nao glifos da fonte de icones. -->
+                    <Button x:Name="BtnTheme" Style="{StaticResource Secondary}" Padding="11,6" Margin="0,0,12,0"
+                            FontSize="14" Click="ToggleTheme_Click"
+                            AutomationProperties.Name="Alternar tema claro ou escuro"
+                            ToolTip="Alternar tema claro/escuro do IsoForge"/>
+                    <TextBlock Text="Perfil" Foreground="{DynamicResource TextMuted}" FontSize="12.5" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="CmbProfile" Width="170" Height="34"
+                              ToolTip="Salve/carregue várias configurações nomeadas (ex.: Matriz, Cliente X)."
+                              SelectionChanged="Profile_SelectionChanged"/>
+                    <Button Content="Salvar" Style="{StaticResource Secondary}" Padding="12,7" Margin="8,0,0,0" Click="SaveProfile_Click"/>
+                    <Button Content="Salvar como…" Style="{StaticResource Secondary}" Padding="12,7" Margin="6,0,0,0" Click="SaveProfileAs_Click"/>
+                    <Button Content="Excluir" Style="{StaticResource Secondary}" Padding="12,7" Margin="6,0,0,0" Click="DeleteProfile_Click"/>
+                </StackPanel>
+                <StackPanel x:Name="TopbarTitle" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource OsAccentSoft}" CornerRadius="9" Width="34" Height="34" Margin="0,0,11,0">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource OsAccentText}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Text="{Binding SelectedItem.Tag, ElementName=MainTabs}"/>
+                    </Border>
+                    <TextBlock FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"
+                               Text="{Binding SelectedItem.Header, ElementName=MainTabs}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ FUNDO ANIMADO ============
+             A mesma AmbientSurface da tela de escolha do sistema, porém a 45% de
+             opacidade: aqui o usuário lê formulários e log, então o movimento
+             acompanha sem competir. Fica só na coluna de conteúdo — a sidebar tem
+             o gradiente próprio dela. -->
+        <Control x:Name="Backdrop" Style="{StaticResource AmbientSurface}"
+                 Grid.Column="1" Grid.Row="1" Opacity="0.45" IsHitTestVisible="False"/>
+
+        <!-- ============ NAVEGAÇÃO + CONTEÚDO ============ -->
+        <TabControl x:Name="MainTabs" Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1" SelectionChanged="MainTabs_SelectionChanged">
+            <TabControl.Resources>
+                <Style TargetType="ScrollViewer">
+                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                    <!-- Folga no pe: sem ela a barra de acoes fixa cortava o ultimo
+                         controle ao meio e nada indicava que havia mais abaixo. -->
+                    <Setter Property="Padding" Value="0,0,0,30"/>
+                </Style>
+            </TabControl.Resources>
+
+            <!-- ============ ISO ============ -->
+            <TabItem x:Name="TabIso" Header="ISO" Tag="&#xE74E;">
+                <ScrollViewer>
+                    <ui:CardFlow Margin="24,18,24,8" Style="{StaticResource TabPageFlow}">
+                        <GroupBox Header="Imagem ISO" Tag="&#xE958;">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock x:Name="LblSourceIso" Text="ISO do Windows 11:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtSourceIso" Grid.Column="1" Margin="0,4"/>
+                                <Button Grid.Column="2" Content="Procurar..." AutomationProperties.Name="Procurar a ISO de origem" Style="{StaticResource Secondary}" Click="BrowseSourceIso_Click"/>
+
+                                <TextBlock Grid.Row="1" Text="Salvar ISO como:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtOutputIso" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                                <Button Grid.Row="1" Grid.Column="2" Content="Procurar..." AutomationProperties.Name="Escolher onde salvar a ISO gerada" Style="{StaticResource Secondary}" Click="BrowseOutputIso_Click"/>
+
+                                <!-- oscdimg já vem embutido no IsoForge: campo oculto (usado por baixo dos panos). -->
+                                <TextBlock Grid.Row="2" Text="oscdimg.exe (ADK):" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                <TextBox x:Name="TxtOscdimg" Grid.Row="2" Grid.Column="1" Margin="0,4" Visibility="Collapsed"/>
+                                <Button Grid.Row="2" Grid.Column="2" Content="Procurar..." AutomationProperties.Name="Procurar o oscdimg.exe" Style="{StaticResource Secondary}" Click="BrowseOscdimg_Click" Visibility="Collapsed"/>
+
+                                <CheckBox x:Name="ChkNoPrompt" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" Margin="0,8,0,0"
+                                          Content="Boot direto sem &quot;Pressione qualquer tecla para iniciar do CD/DVD&quot; (útil em VM)"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <Border x:Name="IsoIdentityBanner" Visibility="Collapsed" CornerRadius="10" Padding="14,11" Margin="0,0,0,4"
+                                Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1">
+                            <!-- DockPanel, nao StackPanel horizontal: o StackPanel mede o
+                                 texto com largura infinita e o TextWrapping ao lado do icone
+                                 nunca valia — a frase saia cortada na borda. -->
+                            <DockPanel>
+                                <TextBlock x:Name="IsoIdentityIcon" DockPanel.Dock="Left" FontFamily="Segoe MDL2 Assets" Text="&#xE946;" FontSize="16"
+                                           Foreground="{DynamicResource InfoText}" VerticalAlignment="Top" Margin="0,1,10,0"/>
+                                <TextBlock x:Name="TxtIsoIdentity" TextWrapping="Wrap" FontSize="12.5"
+                                           Foreground="{DynamicResource InfoText}" MaxWidth="820" HorizontalAlignment="Left"/>
+                            </DockPanel>
+                        </Border>
+
+                        <GroupBox x:Name="GroupLinuxDelivery" Header="Como entregar a personalização" Tag="&#xE7B8;" Visibility="Collapsed">
+                            <StackPanel>
+                                <RadioButton x:Name="RbDeliveryRepack" GroupName="LinuxDelivery" IsChecked="True" Checked="Delivery_Changed"
+                                             Content="Reempacotar a ISO oficial (recomendado) — uma única ISO que instala sozinha"/>
+                                <RadioButton x:Name="RbDeliverySeed" GroupName="LinuxDelivery" Margin="0,8,0,0" Checked="Delivery_Changed"
+                                             Content="Gerar uma ISO &quot;seed&quot; separada — a ISO oficial não é alterada"/>
+                                <Border Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="28,8,0,0">
+                                    <TextBlock x:Name="TxtDeliveryHint" TextWrapping="Wrap" Foreground="{DynamicResource InfoText}" FontSize="12.5"/>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupDiskWindows" Header="Instalação do disco" Tag="&#xEDA2;">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkAutoDisk" Content="Selecionar o disco automaticamente e instalar (nunca o pendrive)"/>
+                                <Border Background="{DynamicResource WarnBg}" BorderBrush="{DynamicResource WarnBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,8,0,0">
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource WarnText}"
+                                               Text="⚠ Apaga o disco de destino — teste em VM antes de usar em produção. Ao ligar, o Windows não pergunta o disco: escolhe o primeiro disco fixo (nunca USB), apaga-o e instala. O pendrive de boot nunca é tocado."/>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupFirstBoot" Header="Primeiro boot (OOBE)" Tag="&#xE701;">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkSkipWifi" Content="Pular a tela de configuração de WiFi no primeiro boot"/>
+
+                                <CheckBox x:Name="ChkAutoWifi" Content="Conectar automaticamente a uma rede Wi-Fi no primeiro logon"
+                                          Margin="0,12,0,0" Checked="AutoWifi_Changed" Unchecked="AutoWifi_Changed"/>
+                                <Grid x:Name="PanelWifi" Margin="28,10,0,0" IsEnabled="False">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Nome (SSID):" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtWifiSsid" Grid.Column="1" Margin="0,4"/>
+                                    <TextBlock Grid.Row="1" Text="Senha:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtWifiPassword" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               Text="Rede WPA2-PSK (padrão doméstico/escritório). Deixe a senha em branco para redes abertas. A senha fica embutida na ISO — trate a ISO como material sensível."/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+                    </ui:CardFlow>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ SISTEMA E USUÁRIO ============ -->
+            <TabItem x:Name="TabSystem" Header="Sistema e usuário" Tag="&#xE77B;">
+                <ScrollViewer>
+                    <ui:CardFlow Margin="24,18,24,8" Style="{StaticResource TabPageFlow}">
+                        <GroupBox x:Name="GroupDeployMode" Header="Modo de implantação" Tag="&#xE912;">
+                            <StackPanel>
+                                <RadioButton x:Name="RbModeLocal" Content="Conta local — cria o usuário abaixo e faz logon automático no 1º boot (fluxo clássico)"
+                                             IsChecked="True" Checked="Mode_Changed"/>
+                                <RadioButton x:Name="RbModeEntra" Margin="0,8,0,0" Checked="Mode_Changed"
+                                             Content="Entra ID — login corporativo/estudante no 1º boot (WiFi + e-mail + ingresso)"/>
+                                <Border Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="28,8,0,0">
+                                    <StackPanel>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}"
+                                                   Text="No modo Entra ID a máquina inicia na tela de conta corporativa. Os programas já vêm instalados (rodam como SYSTEM antes do login) e o usuário local abaixo é o único administrador."/>
+                                        <CheckBox x:Name="ChkDemoteEntra" Margin="0,10,0,0" IsChecked="True"
+                                                  Content="Remover o usuário Entra do grupo Administradores no 1º logon"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupLocalUser" Header="Usuário local" Tag="&#xE77B;">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="150"/>
+                                    <ColumnDefinition Width="230"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock x:Name="LblUserName" Text="Nome do usuário:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtUserName" Grid.Column="1" Margin="0,4"/>
+                                <CheckBox x:Name="ChkAdmin" Grid.Column="3" Margin="16,0,0,0" VerticalAlignment="Center"
+                                          Content="Administrador local" IsChecked="True"/>
+
+                                <TextBlock Grid.Row="1" Text="Senha:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtPassword" Grid.Row="1" Grid.Column="1" Margin="0,4"/>
+                                <CheckBox x:Name="ChkNeverExpires" Grid.Row="1" Grid.Column="3" Margin="16,0,0,0" VerticalAlignment="Center"
+                                          Content="Senha nunca expira" IsChecked="True"/>
+
+                                <TextBlock x:Name="LblComputerName" Grid.Row="2" Text="Nome do computador:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtComputerName" Grid.Row="2" Grid.Column="1" Margin="0,4"/>
+                                <CheckBox x:Name="ChkAutoLogon" Grid.Row="2" Grid.Column="3" Margin="16,0,0,0" VerticalAlignment="Center"
+                                          IsChecked="True">
+                                    <TextBlock Text="Logon automático no 1º boot (necessário p/ instalar apps)"
+                                               TextWrapping="Wrap"/>
+                                </CheckBox>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupWindowsSystem" Header="Sistema" Tag="&#xE770;">
+                            <Grid>
+                                <!-- Mesmo eixo do cartao do Linux: rotulo Auto, campo elastico. -->
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="120"/>
+                                    <ColumnDefinition Width="*" MinWidth="150"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*" MinWidth="150"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <TextBlock Text="Edição (chave):" VerticalAlignment="Center"/>
+                                <ComboBox x:Name="CmbEdition" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,4" Height="34" SelectionChanged="CmbEdition_SelectionChanged">
+                                    <ComboBoxItem Content="Perguntar durante a instalação" IsSelected="True"/>
+                                    <ComboBoxItem Content="Windows 11 Pro" Tag="VK7JG-NPHTM-C97JM-9MPGT-3V66T"/>
+                                    <ComboBoxItem Content="Windows 11 Home" Tag="YTMG3-N6DKC-DKB77-7M9GH-8HVX7"/>
+                                    <ComboBoxItem Content="Windows 11 Enterprise" Tag="NPPR9-FWDCX-D2C8J-H872K-2YT43"/>
+                                    <ComboBoxItem Content="Chave personalizada..." Tag="custom"/>
+                                </ComboBox>
+                                <TextBlock x:Name="LblProductKey" Grid.Row="1" Text="Chave:" VerticalAlignment="Center"/>
+                                <TextBox x:Name="TxtProductKey" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,4" Height="34" IsEnabled="False"
+                                         AutomationProperties.Name="Chave de produto personalizada"
+                                         ToolTip="Cole aqui a SUA chave/licença para ativação. As chaves da lista são genéricas (só escolhem a edição)."/>
+
+                                <Border Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1"
+                                        CornerRadius="8" Padding="10,8" Margin="0,4,0,0">
+                                    <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource InfoText}"
+                                               Text="As chaves das edições acima são as chaves genéricas públicas da Microsoft (KMS client setup keys), usadas apenas para SELECIONAR a edição durante a instalação. Elas NÃO ativam o Windows e não substituem uma licença — a ativação é feita depois com a sua licença ou KMS. É um recurso oficial de implantação da Microsoft (documentado), não pirataria. Para ativar, escolha 'Chave personalizada' e informe a sua licença."/>
+                                </Border>
+
+                                <CheckBox x:Name="ChkBypass" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0"
+                                          Content="Ignorar requisitos de hardware (TPM 2.0, Secure Boot, RAM, CPU) — recomendado para VM"
+                                          IsChecked="True"/>
+                            </Grid>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupLinuxSystem" Header="Sistema Linux" Tag="&#xE770;" Visibility="Collapsed">
+                            <StackPanel>
+                                <Grid>
+                                    <!-- Rotulo Auto + campo elastico: com largura cravada os
+                                         campos da direita saiam pela borda do cartao. -->
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" MinWidth="120"/>
+                                        <ColumnDefinition Width="*" MinWidth="150"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*" MinWidth="150"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Text="Fuso horário:" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbTimezone" Grid.Column="1" Margin="0,4" Height="34" IsEditable="True"
+                                              ToolTip="Formato IANA (ex.: America/Sao_Paulo). Pode digitar outro.">
+                                        <ComboBoxItem Content="America/Sao_Paulo" IsSelected="True"/>
+                                        <ComboBoxItem Content="America/Manaus"/>
+                                        <ComboBoxItem Content="America/Fortaleza"/>
+                                        <ComboBoxItem Content="America/New_York"/>
+                                        <ComboBoxItem Content="Europe/Lisbon"/>
+                                        <ComboBoxItem Content="Europe/Madrid"/>
+                                        <ComboBoxItem Content="UTC"/>
+                                    </ComboBox>
+                                    <TextBlock Grid.Column="2" Text="Idioma:" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                                    <ComboBox x:Name="CmbLinuxLocale" Grid.Column="3" Margin="0,4" Height="34">
+                                        <ComboBoxItem Content="Português (Brasil)" Tag="pt_BR.UTF-8" IsSelected="True"/>
+                                        <ComboBoxItem Content="English (United States)" Tag="en_US.UTF-8"/>
+                                        <ComboBoxItem Content="Español (España)" Tag="es_ES.UTF-8"/>
+                                        <ComboBoxItem Content="Português (Portugal)" Tag="pt_PT.UTF-8"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="1" Text="Teclado:" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbKeyboard" Grid.Row="1" Grid.Column="1" Margin="0,4" Height="34">
+                                        <ComboBoxItem Content="Português (Brasil, ABNT2)" Tag="br|abnt2" IsSelected="True"/>
+                                        <ComboBoxItem Content="Português (Brasil, sem acentuação)" Tag="br|nodeadkeys"/>
+                                        <ComboBoxItem Content="Inglês (EUA)" Tag="us|"/>
+                                        <ComboBoxItem Content="Inglês (EUA internacional)" Tag="us|intl"/>
+                                        <ComboBoxItem Content="Português (Portugal)" Tag="pt|"/>
+                                        <ComboBoxItem Content="Espanhol" Tag="es|"/>
+                                    </ComboBox>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="Ambiente:" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                                    <ComboBox x:Name="CmbDesktop" Grid.Row="1" Grid.Column="3" Margin="0,4" Height="34"
+                                              ToolTip="Ambiente gráfico instalado. Padrão da ISO mantém o que a distro já traz.">
+                                        <ComboBoxItem Content="Padrão da ISO" Tag="Default" IsSelected="True"/>
+                                        <ComboBoxItem Content="GNOME" Tag="Gnome"/>
+                                        <ComboBoxItem Content="KDE Plasma" Tag="Kde"/>
+                                        <ComboBoxItem Content="Xfce" Tag="Xfce"/>
+                                        <ComboBoxItem Content="Sem interface gráfica (servidor)" Tag="None"/>
+                                    </ComboBox>
+
+                                    <TextBlock Grid.Row="2" Text="Nome completo:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtFullName" Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,4" Height="34"
+                                             ToolTip="Nome exibido do usuário (campo GECOS). Opcional."/>
+
+                                    <TextBlock Grid.Row="3" Text="Pacotes extras:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtExtraPackages" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,4" Height="34"
+                                             ToolTip="Nomes de pacotes separados por espaço (ex.: htop vim git). Instalados no 1º boot."/>
+                                </Grid>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupLinuxDisk" Header="Disco de destino" Tag="&#xEDA2;" Visibility="Collapsed">
+                            <StackPanel>
+                                <ItemsControl Style="{StaticResource SegmentTrack}">
+                                    <RadioButton x:Name="RbDiskSimple" Style="{StaticResource Segment}" GroupName="LinuxDisk"
+                                                 Content="Simples (ESP + ext4)" IsChecked="True" Checked="LinuxDisk_Changed"/>
+                                    <RadioButton x:Name="RbDiskLvm" Style="{StaticResource Segment}" GroupName="LinuxDisk"
+                                                 Content="LVM" Checked="LinuxDisk_Changed"/>
+                                    <RadioButton x:Name="RbDiskCrypt" Style="{StaticResource Segment}" GroupName="LinuxDisk"
+                                                 Content="LVM + criptografia (LUKS)" Checked="LinuxDisk_Changed"/>
+                                </ItemsControl>
+
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="230"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Disco:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtTargetDisk" Grid.Column="1" Margin="0,4"
+                                             ToolTip="Ex.: /dev/sda ou /dev/nvme0n1. Deixe vazio para escolher o primeiro disco fixo automaticamente."/>
+                                    <TextBlock Grid.Column="2" Margin="12,0,0,0" VerticalAlignment="Center" FontSize="12" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextMuted}"
+                                               Text="Vazio = escolhe sozinho o primeiro disco fixo (nunca o pendrive de boot)."/>
+
+                                    <TextBlock x:Name="LblDiskPassword" Grid.Row="1" Text="Senha do LUKS:" VerticalAlignment="Center" Visibility="Collapsed"/>
+                                    <TextBox x:Name="TxtDiskPassword" Grid.Row="1" Grid.Column="1" Margin="0,4" Visibility="Collapsed"/>
+                                </Grid>
+
+                                <Border Background="{DynamicResource WarnBg}" BorderBrush="{DynamicResource WarnBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,10,0,0">
+                                    <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource WarnText}"
+                                               Text="⚠ A instalação desassistida APAGA o disco de destino. Teste em VM antes de usar em produção."/>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupLinuxOptions" Header="Opções da instalação" Tag="&#xE9D9;" Visibility="Collapsed">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkLinuxUpdate" Content="Atualizar os pacotes durante/logo após a instalação" IsChecked="True"/>
+                                <CheckBox x:Name="ChkLinuxDrivers" Content="Instalar drivers proprietários (NVIDIA, firmware) e codecs multimídia" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLinuxFlatpak" Content="Habilitar Flatpak + repositório Flathub" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLinuxMinimal" Content="Instalação mínima (menos aplicativos de fábrica)" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLinuxSsh" Content="Instalar o servidor OpenSSH (acesso remoto ao terminal)" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLinuxAutoLogin" Content="Login automático do usuário no primeiro boot" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLinuxNoRoot" Content="Deixar a conta root sem senha (administração só por sudo)" IsChecked="True" Margin="0,6,0,0"/>
+                                <DockPanel Margin="0,12,0,0">
+                                    <TextBlock Text="Chave SSH autorizada:" Width="150" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtSshKey" ToolTip="Cole aqui a chave pública (ssh-ed25519 ... / ssh-rsa ...). Opcional."/>
+                                </DockPanel>
+                            </StackPanel>
+                        </GroupBox>
+                    </ui:CardFlow>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ APLICATIVOS (cards + config dinâmica) ============ -->
+            <TabItem x:Name="TabApps" Header="Aplicativos" Tag="&#xE896;">
+                <ScrollViewer>
+                    <ui:CardFlow Margin="24,18,24,8" Style="{StaticResource TabPageFlow}">
+                        <GroupBox Header="Escolha os programas que virão instalados" Tag="&#xE896;">
+                            <StackPanel>
+                                <TextBlock x:Name="TxtAppsIntro" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,14" TextWrapping="Wrap"
+                                           Text="Clique nos programas que quer na imagem. O IsoForge baixa a versão mais recente sozinho e os instala em silêncio no primeiro logon. Ao selecionar, as opções de cada programa aparecem abaixo."/>
+                                <Border x:Name="LinuxAppsNote" Visibility="Collapsed" CornerRadius="10" Padding="14,11" Margin="0,0,0,14"
+                                        Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1">
+                                    <TextBlock x:Name="TxtLinuxAppsNote" TextWrapping="Wrap" FontSize="12.5"
+                                               Foreground="{DynamicResource InfoText}"/>
+                                </Border>
+                                <WrapPanel>
+                                    <ToggleButton x:Name="CardOffice"   Style="{StaticResource AppCard}" Content="Office 365"    Tag="&#xE8A5;" Click="CardOffice_Click"/>
+                                    <ToggleButton x:Name="CardAnyDesk"  Style="{StaticResource AppCard}" Content="AnyDesk"       Tag="&#xE703;" Click="CardAnyDesk_Click"/>
+                                    <ToggleButton x:Name="CardSevenZip" Style="{StaticResource AppCard}" Content="7-Zip"         Tag="&#xE8B7;" Click="CardSevenZip_Click"/>
+                                    <ToggleButton x:Name="CardForti"    Style="{StaticResource AppCard}" Content="FortiClient"   Tag="&#xE72E;" Click="CardForti_Click"/>
+                                    <ToggleButton x:Name="CardAdobe"    Style="{StaticResource AppCard}" Content="Adobe Reader"  Tag="&#xEA90;" Click="CardAdobe_Click"/>
+                                    <ToggleButton x:Name="CardChrome"   Style="{StaticResource AppCard}" Content="Google Chrome" Tag="&#xE774;" Click="CardChrome_Click"/>
+                                    <ToggleButton x:Name="CardFirefox"  Style="{StaticResource AppCard}" Content="Firefox"       Tag="&#xE909;" Click="CardFirefox_Click"/>
+                                    <ToggleButton x:Name="CardNotepad"  Style="{StaticResource AppCard}" Content="Notepad++"     Tag="&#xE70F;" Click="CardNotepad_Click"/>
+                                    <ToggleButton x:Name="CardVcRedist" Style="{StaticResource AppCard}" Content="Visual C++"    Tag="&#xE943;" Click="CardVcRedist_Click"/>
+                                    <Button x:Name="BtnAddCustomApp" Content="+  Adicionar outro" Style="{StaticResource Secondary}" Width="196" Height="96" Margin="0,0,14,14" Click="AddCustomApp_Click"/>
+                                </WrapPanel>
+
+                                <Border Background="{DynamicResource SubtleBg}" BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12" Margin="0,4,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Selecionados" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextMuted}" Margin="0,0,0,8"/>
+                                        <TextBlock x:Name="EmptyAppsHint" Text="Nenhum programa selecionado ainda." Foreground="{DynamicResource TextMuted}" FontSize="12.5"/>
+                                        <ItemsControl x:Name="AppsChips">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{DynamicResource OsAccentSoft}" CornerRadius="14" Padding="12,6" Margin="0,0,8,4">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Name}" Foreground="{DynamicResource OsAccent}" FontWeight="SemiBold" FontSize="12.5" VerticalAlignment="Center"/>
+                                                            <Button Style="{StaticResource AppChipRemove}" Tag="{Binding}" Click="RemoveAppChip_Click"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Config dinâmica: OFFICE -->
+                        <GroupBox x:Name="OfficeConfigCard" Header="Opções do Office 365" Tag="&#xE8A5;" Visibility="Collapsed">
+                            <StackPanel>
+                                <Grid x:Name="PanelOfficeMode" Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Instalação:" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <RadioButton x:Name="RbOfficeOnline" Style="{StaticResource Segment}" GroupName="OfficeMode"
+                                                     Content="Online (baixa no 1º logon)" IsChecked="True" Checked="OfficeMode_Changed"/>
+                                        <RadioButton x:Name="RbOfficeOffline" Style="{StaticResource Segment}" GroupName="OfficeMode"
+                                                     Content="Offline (embute na ISO ~3,5 GB)" Checked="OfficeMode_Changed"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="240"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Idioma:" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbOfficeLang" Grid.Column="1" Height="34" SelectionChanged="OfficeLang_Changed">
+                                        <ComboBoxItem Content="Português (Brasil)" Tag="pt-br" IsSelected="True"/>
+                                        <ComboBoxItem Content="English (United States)" Tag="en-us"/>
+                                        <ComboBoxItem Content="Español (España)" Tag="es-es"/>
+                                        <ComboBoxItem Content="Português (Portugal)" Tag="pt-pt"/>
+                                    </ComboBox>
+                                </Grid>
+                                <Grid x:Name="PanelOfficeSource" Visibility="Collapsed">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="110"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Pasta offline:" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtOfficeSource" Grid.Column="1" IsReadOnly="True" Margin="0,0,6,0"/>
+                                    <Button Grid.Column="2" Content="Baixar Office..." Click="DownloadOffice_Click"/>
+                                    <Button Grid.Column="3" Content="Procurar..." AutomationProperties.Name="Procurar a pasta de instalação do Office" Style="{StaticResource Secondary}" Click="BrowseOfficeSource_Click"/>
+                                </Grid>
+                                <TextBlock x:Name="TxtOfficeHint" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap"
+                                           Text="Online: cada máquina baixa o Office no 1º logon (ISO menor). Offline: o Office é embutido na ISO e instala sem internet."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <!-- Config dinâmica: FORTICLIENT -->
+                        <GroupBox x:Name="FortiConfigCard" Header="Opções do FortiClient VPN" Tag="&#xE72E;" Visibility="Collapsed">
+                            <StackPanel>
+                                <Border x:Name="FortiLinuxNote" Visibility="Collapsed" CornerRadius="10" Padding="14,11" Margin="0,0,0,12"
+                                        Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1">
+                                    <TextBlock x:Name="TxtFortiLinuxNote" TextWrapping="Wrap" FontSize="12.5"
+                                               Foreground="{DynamicResource InfoText}"/>
+                                </Border>
+                                <StackPanel x:Name="PanelFortiWindows">
+                                <TextBlock FontWeight="SemiBold" Text="Método recomendado — copiar de um FortiClient já configurado" Margin="0,0,0,6"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"
+                                           Text="Configure os túneis uma vez no seu FortiClient e clique em 'Capturar deste PC' (traz gateway + senha cifrada, formato nativo). É o mais confiável."/>
+                                <DockPanel Margin="0,0,0,14">
+                                    <Button DockPanel.Dock="Right" Content="Capturar deste PC" Click="CaptureFortiReg_Click"
+                                            ToolTip="Exporta HKLM\SOFTWARE\Fortinet\FortiClient deste computador."/>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." AutomationProperties.Name="Procurar o arquivo de registro do FortiClient" Style="{StaticResource Secondary}" Click="BrowseFortiReg_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearFortiReg_Click"/>
+                                    <TextBox x:Name="TxtFortiReg" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                                </StackPanel>
+
+                                <Expander Header="Digitar os túneis manualmente (experimental)">
+                                    <StackPanel Margin="0,10,0,0">
+                                        <Border Background="{DynamicResource WarnBg}" BorderBrush="{DynamicResource WarnBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                            <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource WarnText}" FontSize="12"
+                                                       Text="O import por texto pode instabilizar o FortiClient em algumas versões. Prefira 'Capturar deste PC'. Marque abaixo apenas se quiser mesmo usar este método."/>
+                                        </Border>
+                                        <CheckBox x:Name="ChkVpnTextImport" Margin="0,0,0,8"
+                                                  Content="Configurar os túneis digitados via texto"/>
+                                        <DataGrid x:Name="GridVpn" AutoGenerateColumns="False" CanUserAddRows="True"
+                                                  HeadersVisibility="Column" MinHeight="80" MaxHeight="150" SelectionMode="Single"
+                                                  PreviewMouseWheel="Grid_PreviewMouseWheel">
+                                            <DataGrid.Columns>
+                                                <DataGridTextColumn Header="Nome do túnel" Binding="{Binding Name}" Width="170"/>
+                                                <DataGridTextColumn Header="Gateway (IP)" Binding="{Binding RemoteGateway}" Width="170"/>
+                                                <DataGridTextColumn Header="Chave (PSK)" Binding="{Binding PresharedKey}" Width="*"/>
+                                            </DataGrid.Columns>
+                                        </DataGrid>
+                                        <Button Content="Remover túnel selecionado" Style="{StaticResource Secondary}" Margin="0,6,0,0" HorizontalAlignment="Left" Click="RemoveVpn_Click"/>
+                                    </StackPanel>
+                                </Expander>
+
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <TextBlock Text="Autenticação (XAuth):" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <RadioButton x:Name="RbXauthPrompt" GroupName="Xauth" Content="Pedir no login" IsChecked="True" VerticalAlignment="Center" Checked="Xauth_Changed"/>
+                                    <RadioButton x:Name="RbXauthSave" GroupName="Xauth" Content="Salvar login" Margin="16,0,0,0" VerticalAlignment="Center" Checked="Xauth_Changed"/>
+                                    <RadioButton x:Name="RbXauthOff" GroupName="Xauth" Content="Desabilitado" Margin="16,0,0,0" VerticalAlignment="Center" Checked="Xauth_Changed"/>
+                                </StackPanel>
+                                <StackPanel x:Name="PanelXauthCreds" Orientation="Horizontal" Margin="0,8,0,0" IsEnabled="False">
+                                    <TextBlock Text="Usuário:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <TextBox x:Name="TxtXauthUser" Width="160" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Senha:" VerticalAlignment="Center" Margin="16,0,6,0"/>
+                                    <TextBox x:Name="TxtXauthPass" Width="160" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+                    </ui:CardFlow>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ DRIVERS ============ -->
+            <TabItem x:Name="TabDrivers" Header="Drivers" Tag="&#xE950;">
+                <ScrollViewer>
+                    <ui:CardFlow Margin="24,18,24,8" Style="{StaticResource TabPageFlow}">
+                        <GroupBox x:Name="GroupDriversLinux" Header="Drivers no Linux" Tag="&#xE950;" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource TextMuted}" FontSize="12.5" Margin="0,0,0,12"
+                                           Text="No Linux os drivers fazem parte do próprio kernel: rede, chipset, áudio e vídeo são reconhecidos no boot, sem injeção por modelo. Não há nada para baixar por fabricante."/>
+                                <Border Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="10" Padding="14,12">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold" Foreground="{DynamicResource InfoText}" Text="O que precisa de atenção" Margin="0,0,0,6"/>
+                                        <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource InfoText}" FontSize="12.5"
+                                                   Text="Placas NVIDIA, alguns adaptadores Wi-Fi e codecs multimídia dependem de componentes proprietários. Marque &quot;Instalar drivers proprietários&quot; na aba Sistema e usuário para que sejam instalados junto do sistema."/>
+                                    </StackPanel>
+                                </Border>
+                                <CheckBox x:Name="ChkLinuxDriversMirror" Margin="0,12,0,0" Click="LinuxDriversMirror_Click"
+                                          Content="Instalar drivers proprietários (NVIDIA, firmware) e codecs multimídia"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupDriversWindows" Header="Drivers do fabricante (injeção automática por modelo)" Tag="&#xE950;">
+                            <StackPanel>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,12"
+                                           Text="Baixa os drivers oficiais do modelo (rede, chipset, vídeo…) e injeta na ISO, para a máquina já subir com tudo funcionando. Modelos corporativos Dell (Latitude, OptiPlex, Precision, XPS) e Lenovo (ThinkPad, ThinkCentre)."/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Modo:" Width="90" VerticalAlignment="Center"/>
+                                    <ItemsControl Style="{StaticResource SegmentTrack}">
+                                        <RadioButton x:Name="RbDrvPack" Style="{StaticResource Segment}" GroupName="DrvMode"
+                                                     Content="Pack completo" IsChecked="True" Checked="DriverMode_Changed"/>
+                                        <RadioButton x:Name="RbDrvIndividual" Style="{StaticResource Segment}" GroupName="DrvMode"
+                                                     Content="Drivers individuais" Checked="DriverMode_Changed"/>
+                                    </ItemsControl>
+                                </DockPanel>
+                                <TextBlock x:Name="TxtDriverModeHint" Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Pack completo: baixa tudo do modelo de uma vez (GBs), sem executar nada. Garantido."/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Fabricante:" Width="90" VerticalAlignment="Center"/>
+                                    <ComboBox x:Name="CmbDriverVendor" Width="140" Height="34" HorizontalAlignment="Left"
+                                              SelectionChanged="DriverVendor_Changed">
+                                        <ComboBoxItem Content="Dell" IsSelected="True"/>
+                                        <ComboBoxItem Content="Lenovo"/>
+                                        <ComboBoxItem Content="HP"/>
+                                    </ComboBox>
+                                    <Button DockPanel.Dock="Right" Content="Recarregar" Style="{StaticResource Secondary}"
+                                            HorizontalAlignment="Right" Click="LoadDrivers_Click"
+                                            ToolTip="Recarrega a lista de modelos do catálogo do fabricante."/>
+                                </DockPanel>
+                                <DockPanel x:Name="PanelDriverSearch" Margin="0,0,0,6">
+                                    <TextBlock Text="Modelo:" Width="90" VerticalAlignment="Center"/>
+                                    <TextBox x:Name="TxtDriverSearch" IsEnabled="False" TextChanged="DriverSearch_Changed"
+                                             ToolTip="Digite parte do nome do modelo (ex.: Latitude 5440)"/>
+                                </DockPanel>
+
+                                <!-- Área única: lista de modelos OU, no modo individual, os drivers do modelo escolhido. -->
+                                <Grid Margin="0,0,0,8">
+                                    <ListBox x:Name="LstDriverModels" Height="210" SelectionChanged="DriverModel_Selected"
+                                             ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                                    <StackPanel x:Name="DriverPickPanel" Visibility="Collapsed">
+                                        <DockPanel Margin="0,0,0,6">
+                                            <Button DockPanel.Dock="Left" Content="‹ Voltar" Style="{StaticResource Secondary}" Padding="10,6" Click="DriverBack_Click"/>
+                                            <Button DockPanel.Dock="Right" Content="Todos" Style="{StaticResource Secondary}" Padding="10,6" Margin="8,0,0,0" Click="IndivSelectAll_Click"/>
+                                            <Button DockPanel.Dock="Right" Content="Nenhum" Style="{StaticResource Secondary}" Padding="10,6" Click="IndivSelectNone_Click"/>
+                                            <TextBlock x:Name="TxtPickTitle" VerticalAlignment="Center" Margin="10,0,0,0" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DockPanel>
+                                        <ListBox x:Name="LstIndividualDrivers" Height="176" ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                                 HorizontalContentAlignment="Stretch">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox IsChecked="{Binding Include, Mode=TwoWay}" Margin="0,3,0,0">
+                                                        <TextBlock TextWrapping="Wrap">
+                                                            <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                            <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource TextMuted}"/>
+                                                        </TextBlock>
+                                                    </CheckBox>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <DockPanel>
+                                    <Button x:Name="BtnDriverDownload" DockPanel.Dock="Left" Content="Baixar pack deste modelo"
+                                            Style="{StaticResource Cta}" IsEnabled="False" Click="DownloadDriver_Click"/>
+                                    <Button x:Name="BtnDriverClear" DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}"
+                                            HorizontalAlignment="Right" Click="ClearDriver_Click"/>
+                                    <TextBlock x:Name="TxtDriverStatus" VerticalAlignment="Center" Margin="12,0,0,0" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextMuted}" FontSize="12.5" Text="Nenhum driver selecionado."/>
+                                </DockPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="DriverComponentsCard" Header="Componentes a instalar" Tag="&#xE71D;" Visibility="Collapsed">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,8" LastChildFill="False">
+                                    <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap"
+                                               Text="Marque só o que quer injetar (ex.: apenas Rede). Por padrão, tudo vem marcado."/>
+                                    <Button DockPanel.Dock="Right" Content="Todos" Style="{StaticResource Secondary}" Padding="10,6" Margin="8,0,0,0" Click="DriverSelectAll_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Nenhum" Style="{StaticResource Secondary}" Padding="10,6" Click="DriverSelectNone_Click"/>
+                                </DockPanel>
+                                <ItemsControl x:Name="LstDriverCategories">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox IsChecked="{Binding Include, Mode=TwoWay}" Margin="0,4,0,0">
+                                                <TextBlock>
+                                                    <Run Text="{Binding Name, Mode=OneWay}" FontWeight="SemiBold"/>
+                                                    <Run Text="{Binding Detail, Mode=OneWay}" Foreground="{DynamicResource TextMuted}"/>
+                                                </TextBlock>
+                                            </CheckBox>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </GroupBox>
+                    </ui:CardFlow>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ PERSONALIZAÇÃO ============ -->
+            <TabItem x:Name="TabCustom" Header="Personalização" Tag="&#xE790;">
+                <ScrollViewer>
+                    <ui:CardFlow Margin="24,18,24,8" Style="{StaticResource TabPageFlow}">
+                        <GroupBox Header="Aparência" Tag="&#xE790;">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="LblThemeLabel" Text="Tema do Windows:" VerticalAlignment="Center"/>
+                                    <ItemsControl Grid.Column="1" Style="{StaticResource SegmentTrack}">
+                                        <RadioButton x:Name="RbThemeDefault" Style="{StaticResource Segment}" GroupName="WinTheme"
+                                                     Content="Padrão do sistema" IsChecked="True"/>
+                                        <RadioButton x:Name="RbThemeLight" Style="{StaticResource Segment}" GroupName="WinTheme"
+                                                     Content="Claro (branco)"/>
+                                        <RadioButton x:Name="RbThemeDark" Style="{StaticResource Segment}" GroupName="WinTheme"
+                                                     Content="Escuro"/>
+                                    </ItemsControl>
+                                </Grid>
+                                <TextBlock x:Name="TxtThemeHint" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
+                                           Text="Define o tema de aplicativos e do sistema no primeiro logon (e para novos usuários). 'Padrão do sistema' não altera nada."/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="LblTaskbarLabel" Text="Alinhamento da barra de tarefas:" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                    <ItemsControl Grid.Column="1" Style="{StaticResource SegmentTrack}">
+                                        <RadioButton x:Name="RbTaskbarDefault" Style="{StaticResource Segment}" GroupName="TaskbarAl"
+                                                     Content="Padrão do sistema" IsChecked="True"/>
+                                        <RadioButton x:Name="RbTaskbarCenter" Style="{StaticResource Segment}" GroupName="TaskbarAl"
+                                                     Content="Centro"/>
+                                        <RadioButton x:Name="RbTaskbarLeft" Style="{StaticResource Segment}" GroupName="TaskbarAl"
+                                                     Content="Esquerda"/>
+                                    </ItemsControl>
+                                </Grid>
+                                <TextBlock x:Name="TxtTaskbarHint" Foreground="{DynamicResource TextMuted}" FontSize="12" Margin="0,6,0,14" TextWrapping="Wrap"
+                                           Text="Posição dos ícones da barra de tarefas no primeiro logon (e para novos usuários). 'Padrão do sistema' não altera nada."/>
+                                <DockPanel Margin="0,0,0,8">
+                                    <TextBlock Text="Papel de parede:" Width="150" VerticalAlignment="Center"/>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." AutomationProperties.Name="Procurar a imagem do papel de parede" Style="{StaticResource Secondary}" Click="BrowseWallpaper_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearWallpaper_Click"/>
+                                    <TextBox x:Name="TxtWallpaper" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                                <DockPanel>
+                                    <TextBlock Text="Tela de bloqueio:" Width="150" VerticalAlignment="Center"/>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." AutomationProperties.Name="Procurar a imagem da tela de bloqueio" Style="{StaticResource Secondary}" Click="BrowseLockScreen_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearLockScreen_Click"/>
+                                    <TextBox x:Name="TxtLockScreen" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupDebloatWindows" Header="Otimização do Windows (debloat)" Tag="&#xEC4A;">
+                            <StackPanel>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Aplicado no primeiro logon. Mantém apps essenciais (Loja, Calculadora, Fotos, Terminal…)."/>
+                                <CheckBox x:Name="ChkDebloatApps" Content="Remover apps de fábrica do Windows"
+                                          Checked="DebloatApps_Changed" Unchecked="DebloatApps_Changed"/>
+
+                                <!-- Lista item a item: o rótulo antigo terminava em "etc.", e aquele
+                                     "etc." escondia 27 pacotes. Agora nada sai sem estar marcado aqui. -->
+                                <StackPanel x:Name="PanelBloat" Margin="24,8,0,0" Visibility="Collapsed">
+                                    <DockPanel Margin="0,0,0,4">
+                                        <Button DockPanel.Dock="Right" Content="Nenhum" Style="{StaticResource Secondary}"
+                                                Padding="10,4" Margin="6,0,0,0" Click="BloatNenhum_Click"
+                                                AutomationProperties.Name="Desmarcar todos os aplicativos da lista"/>
+                                        <Button DockPanel.Dock="Right" Content="Todos" Style="{StaticResource Secondary}"
+                                                Padding="10,4" Click="BloatTodos_Click"
+                                                AutomationProperties.Name="Marcar todos os aplicativos da lista"/>
+                                        <TextBlock x:Name="TxtBloatResumo" VerticalAlignment="Center"
+                                                   FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+                                    </DockPanel>
+                                    <Border BorderBrush="{DynamicResource CardBorder}" BorderThickness="1" CornerRadius="8" Padding="12,8">
+                                        <ScrollViewer MaxHeight="340" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl x:Name="ListaBloat">
+                                                <ItemsControl.GroupStyle>
+                                                    <GroupStyle>
+                                                        <GroupStyle.HeaderTemplate>
+                                                            <DataTemplate>
+                                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12"
+                                                                           Margin="0,10,0,4" Foreground="{DynamicResource OsAccentText}"/>
+                                                            </DataTemplate>
+                                                        </GroupStyle.HeaderTemplate>
+                                                    </GroupStyle>
+                                                </ItemsControl.GroupStyle>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox IsChecked="{Binding Remover, Mode=TwoWay}" Margin="0,3,0,3"
+                                                                  AutomationProperties.Name="{Binding Nome}">
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Nome}" TextWrapping="Wrap"/>
+                                                                <TextBlock Text="{Binding Descricao}" TextWrapping="Wrap" FontSize="11.5"
+                                                                           Foreground="{DynamicResource TextMuted}" Margin="0,1,0,0"/>
+                                                                <TextBlock Text="{Binding Aviso}" TextWrapping="Wrap" FontSize="11.5"
+                                                                           FontWeight="SemiBold" Margin="0,2,0,0"
+                                                                           Foreground="{DynamicResource OsAccentText}"
+                                                                           Visibility="{Binding VisibilidadeAviso}"/>
+                                                            </StackPanel>
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </StackPanel>
+
+                                <CheckBox x:Name="ChkDebloatCopilot" Content="Desativar o Windows Copilot" Margin="0,10,0,0"/>
+                                <CheckBox x:Name="ChkDebloatTeams" Content="Remover o Teams pessoal (Chat)" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkDebloatOneDrive" Content="Desinstalar o OneDrive" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkDebloatAds" Content="Tirar sugestões/propagandas do menu Iniciar" Margin="0,6,0,0"/>
+
+                                <CheckBox x:Name="ChkDebloatTelemetry" Content="Reduzir a telemetria do Windows" Margin="0,6,0,0"/>
+                                <Expander Header="O que é telemetria, e o que esta opção faz" Margin="24,4,0,0">
+                                    <StackPanel Margin="0,6,0,0">
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextMuted}"
+                                                   Text="O Windows envia à Microsoft, sozinho e o tempo todo, dados sobre o aparelho e sobre o uso dele: modelo e peças da máquina, versão do sistema, quais programas estão instalados e quanto travam, quais recursos são usados e mensagens de erro. A Microsoft chama isso de Dados de Diagnóstico. Não é o conteúdo dos seus arquivos — é o comportamento da máquina."/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" Foreground="{DynamicResource TextMuted}"
+                                                   Text="Marcando esta opção, o IsoForge faz duas coisas no 1º logon: põe a política AllowTelemetry no nível mínimo (0 = Segurança) e desliga o serviço DiagTrack (&quot;Experiências do Usuário Conectado e Telemetria&quot;), que é quem coleta e envia. Os dois juntos: sem o serviço não há envio, e sem a política ele voltaria a subir numa atualização."/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" Foreground="{DynamicResource TextMuted}"
+                                                   Text="O que NÃO muda: Windows Update, Microsoft Defender e a ativação continuam funcionando normalmente — eles não dependem do DiagTrack."/>
+                                        <TextBlock TextWrapping="Wrap" FontSize="12" Margin="0,8,0,0" Foreground="{DynamicResource OsAccentText}"
+                                                   Text="Ressalva honesta: o nível 0 (Segurança) só é respeitado por inteiro nas edições Enterprise, Education e LTSC. No Windows 11 Home e Pro a Microsoft trata o 0 como 1 (Obrigatório/Básico) — ou seja, um mínimo de dados continua indo. Desligar o DiagTrack, esse sim, vale em qualquer edição."/>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox x:Name="GroupDebloatLinux" Header="Otimização do Linux" Tag="&#xEC4A;" Visibility="Collapsed">
+                            <StackPanel>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                           Text="Aplicado no primeiro boot, junto da instalação dos programas."/>
+                                <CheckBox x:Name="ChkLxDebloatGames" Content="Remover os jogos e utilitários de fábrica do ambiente gráfico"/>
+                                <CheckBox x:Name="ChkLxDebloatTelemetry" Content="Desativar coleta de dados e relatórios de erro (apport, whoopsie, ubuntu-report, popcon)" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLxDebloatSnap" Content="Remover o snapd e priorizar pacotes .deb nativos (Ubuntu/Mint)" Margin="0,6,0,0"/>
+                                <CheckBox x:Name="ChkLxDebloatMotd" Content="Desativar as mensagens promocionais do MOTD (Ubuntu Pro / motd-news)" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Relatório de provisionamento" Tag="&#xE9F9;">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkReport" Content="Gerar relatório na área de trabalho ao final do 1º logon" IsChecked="True"/>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="12" TextWrapping="Wrap" Margin="24,4,0,0"
+                                           Text="HTML com o que foi configurado (apps, drivers, VPN, tema…) e o resultado real da instalação (lido do log)."/>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <GroupBox Header="Nome automático do computador por unidade" Tag="&#xE8AC;">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkUnitSelection" Content="Perguntar a unidade ao instalar e nomear a máquina automaticamente"
+                                          IsChecked="False" Checked="UnitSelection_Changed" Unchecked="UnitSelection_Changed"/>
+                                <StackPanel x:Name="PanelUnit" Margin="28,10,0,0" IsEnabled="False">
+                                    <TextBlock x:Name="TxtUnitHint" Foreground="{DynamicResource TextMuted}" FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,8"
+                                               Text="No 1º logon aparece uma tela para escolher a unidade. O nome da máquina vira: PREFIXO + número de série do equipamento."/>
+                                    <Border Background="{DynamicResource OsAccentSoft}" CornerRadius="10" Padding="14,10" Margin="0,0,0,12">
+                                        <DockPanel>
+                                            <TextBlock DockPanel.Dock="Left" FontFamily="Segoe MDL2 Assets" Text="&#xE7F4;" FontSize="16" Foreground="{DynamicResource OsAccent}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                            <TextBlock x:Name="TxtUnitPreview" Foreground="{DynamicResource OsAccent}" FontWeight="SemiBold" FontSize="13"
+                                                       VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                        </DockPanel>
+                                    </Border>
+                                    <TextBlock Text="Unidades (rótulo exibido → prefixo do nome):" FontSize="12.5" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                    <DataGrid x:Name="GridUnits" AutoGenerateColumns="False" CanUserAddRows="True"
+                                              HeadersVisibility="Column" MinHeight="80" MaxHeight="150" SelectionMode="Single"
+                                              PreviewMouseWheel="Grid_PreviewMouseWheel" CellEditEnding="Units_CellEditEnding">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Unidade (exibida na tela)" Binding="{Binding Name}" Width="*"/>
+                                            <DataGridTextColumn Header="Prefixo do hostname" Binding="{Binding Prefix}" Width="220"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <Button Content="Remover unidade selecionada" Style="{StaticResource Secondary}" Margin="0,6,0,0" HorizontalAlignment="Left" Click="RemoveUnit_Click"/>
+
+                                    <Expander x:Name="ExpanderUnitMethod" Header="Quando a tela aparece (avançado)" Margin="0,12,0,0">
+                                        <StackPanel Margin="0,8,0,0">
+                                            <RadioButton x:Name="RbUnitFirstLogon" IsChecked="True"
+                                                         Content="No 1º logon do usuário (recomendado — sem modo auditoria)"/>
+                                            <RadioButton x:Name="RbUnitAudit" Margin="0,6,0,0"
+                                                         Content="Antes do usuário, no modo de auditoria (reinicia para o OOBE)"/>
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </StackPanel>
+                        </GroupBox>
+
+                        <Expander Header="Scripts avançados (opcional)">
+                            <StackPanel Margin="0,10,0,0">
+                                <StackPanel x:Name="PanelCustomUnattend">
+                                <RadioButton x:Name="RbGeneratedUnattend" Content="Gerar autounattend.xml automaticamente (recomendado)"
+                                             IsChecked="True" Checked="UnattendMode_Changed"/>
+                                <RadioButton x:Name="RbCustomUnattend" Content="Usar meu próprio autounattend.xml:"
+                                             Margin="0,6,0,0" Checked="UnattendMode_Changed"/>
+                                <DockPanel Margin="28,4,0,0">
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." AutomationProperties.Name="Procurar um autounattend.xml próprio" Style="{StaticResource Secondary}" Click="BrowseCustomUnattend_Click"/>
+                                    <TextBox x:Name="TxtCustomUnattend" IsEnabled="False" Margin="0,0,6,0"/>
+                                </DockPanel>
+                                </StackPanel>
+                                <TextBlock x:Name="LblPostScript" Text="Script executado no 1º logon (.ps1, .cmd ou .bat):" Margin="0,12,0,4"/>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="Procurar..." AutomationProperties.Name="Procurar o script de pós-instalação" Style="{StaticResource Secondary}" Click="BrowsePostScript_Click"/>
+                                    <Button DockPanel.Dock="Right" Content="Limpar" Style="{StaticResource Secondary}" Click="ClearPostScript_Click"/>
+                                    <TextBox x:Name="TxtPostScript" IsReadOnly="True" Margin="0,0,6,0"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Expander>
+                    </ui:CardFlow>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ============ IMAGEM GOLDEN ============ -->
+            <!-- ============ IMAGEM GOLDEN (DESATIVADA) ============
+                 A aba esta COMENTADA de proposito. O fluxo golden (VM temporaria,
+                 instalacao, sysprep, captura do install.wim) ainda nao esta bem
+                 elaborado e nao funciona de forma confiavel, entao nao deve ser
+                 oferecido a quem usa o IsoForge.
+
+                 O codigo NAO foi apagado: Core/GoldenImageScripts.cs e
+                 Core/GoldenAutoBuilder.cs continuam no repositorio, e os campos
+                 UseCapturedWim / CapturedWimPath / GoldenReference seguem em
+                 BuildConfig. Para reativar, descomente este bloco e os trechos
+                 marcados com "IMAGEM GOLDEN (DESATIVADA)" em MainWindow.xaml.cs.
+
+            <TabItem x:Name="TabGolden" Header="Imagem Golden" Tag="&#xE735;">
+                <ScrollViewer>
+                    <ui:CardFlow Margin="24,18,24,8" Style="{StaticResource TabPageFlow}">
+                        <GroupBox Header="Imagem golden — Windows com tudo já instalado" Tag="&#xE735;">
+                            <StackPanel>
+                                <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,0,0,12" TextWrapping="Wrap"
+                                           Text="Uma imagem golden já sobe com os aplicativos instalados — sem instalar nada nem usar internet no primeiro boot. O IsoForge instala numa VM de teste temporária os apps escolhidos na aba Aplicativos, congela e coloca dentro da ISO."/>
+
+                                <Border Background="{DynamicResource InfoBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="Geração automática (recomendado)" FontWeight="SemiBold" FontSize="15" Foreground="{DynamicResource TextMain}"/>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,6,0,10" TextWrapping="Wrap"
+                                                   Text="Cria uma VM Hyper-V invisível, instala os apps, faz sysprep e captura a imagem — tudo sozinho."/>
+                                        <Border Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource InfoBorder}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                            <StackPanel>
+                                                <TextBlock Text="Será instalado na imagem (aba Aplicativos):" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextMain}"/>
+                                                <TextBlock x:Name="TxtGoldenSummary" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource OsAccent}" FontWeight="SemiBold"/>
+                                                <TextBlock x:Name="TxtGoldenOfficeNote" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextMuted}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <TextBlock Foreground="{DynamicResource TextMuted}" Margin="0,0,0,10" FontSize="12" TextWrapping="Wrap"
+                                                   Text="Requisitos: Hyper-V habilitado, IsoForge como Administrador, ~40 GB livres e 30–60 min."/>
+                                        <Button x:Name="BtnGoldenAuto" Style="{StaticResource Cta}" HorizontalAlignment="Left"
+                                                Content="Gerar imagem golden automaticamente" Click="GoldenAuto_Click"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <Expander Header="Ou usar um install.wim já capturado">
+                                    <StackPanel Margin="0,10,0,0">
+                                        <CheckBox x:Name="ChkGolden" Content="Usar install.wim capturado (apps já pré-instalados)"
+                                                  Checked="Golden_Changed" Unchecked="Golden_Changed"/>
+                                        <DockPanel x:Name="PanelGolden" IsEnabled="False" Margin="0,8,0,0">
+                                            <TextBlock Text="install.wim:" Width="150" VerticalAlignment="Center"/>
+                                            <Button DockPanel.Dock="Right" Content="Procurar..." AutomationProperties.Name="Procurar o arquivo install.wim da imagem golden" Style="{StaticResource Secondary}" Click="BrowseGoldenWim_Click"/>
+                                            <TextBox x:Name="TxtGoldenWim" IsReadOnly="True" Margin="0,0,6,0"/>
+                                        </DockPanel>
+                                        <Button Content="Salvar scripts do fluxo manual (sysprep + captura)..." Style="{StaticResource Secondary}"
+                                                HorizontalAlignment="Left" Margin="0,12,0,0" Click="SaveGoldenScripts_Click"/>
+                                    </StackPanel>
+                                </Expander>
+                            </StackPanel>
+                        </GroupBox>
+                    </ui:CardFlow>
+                </ScrollViewer>
+            </TabItem>
+            -->
+        </TabControl>
+
+        <!-- ============ RODAPÉ: ações + status/downloads ============ -->
+        <Grid x:Name="ActionRail" Grid.Column="1" Grid.Row="2">
+            <Border Background="{DynamicResource CardBg}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="0,1,0,0" Padding="24,14">
+            <StackPanel>
+                <DockPanel>
+                    <!-- So aparece com o console recolhido: e a unica porta de volta. -->
+                    <Button x:Name="BtnLogShow" DockPanel.Dock="Right" Style="{StaticResource Secondary}"
+                            Padding="10,8" Margin="10,0,0,0" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                            Click="ToggleLog_Click" Visibility="Collapsed"
+                            VerticalAlignment="Center"
+                            AutomationProperties.Name="Mostrar o console de atividade"
+                            ToolTip="Mostrar o console de atividade">
+                            <!-- glifo num TextBlock proprio: o estilo implicito de
+                                 TextBlock define FontFamily e venceria a fonte herdada
+                                 do botao, virando um quadrado vazio -->
+                            <TextBlock x:Name="GlifoBtnLogShow" FontFamily="Segoe MDL2 Assets"
+                                       FontSize="10" Text="&#xE70E;"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                        </Button>
+                    <Border DockPanel.Dock="Right" Background="{DynamicResource ChipBg}" CornerRadius="10" Padding="14,8" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- INDICADOR DE ESTADO. Tres canais, nao so cor:
+                                 parado = ponto imovel · ocupado = ponto pulsando com anel
+                                 que abre · concluido/falhou = glifo que salta. O pulso
+                                 perpetuo que existia aqui rodava tambem em "Pronto" — um
+                                 indicador que nunca para nao indica nada — e a 60 fps. -->
+                            <Grid Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,9,0">
+                                <Ellipse x:Name="StatusRing" Width="16" Height="16" Opacity="0"
+                                         Stroke="{DynamicResource OsAccent}" StrokeThickness="1.5"
+                                         RenderTransformOrigin="0.5,0.5">
+                                    <Ellipse.RenderTransform>
+                                        <ScaleTransform x:Name="StatusRingS" ScaleX="0.4" ScaleY="0.4"/>
+                                    </Ellipse.RenderTransform>
+                                </Ellipse>
+                                <Ellipse x:Name="StatusDot" AutomationProperties.Name="Indicador de atividade"
+                                         Width="9" Height="9" Fill="{DynamicResource Ok}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock x:Name="StatusGlyph" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="11" Foreground="{DynamicResource Ok}" Opacity="0"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <ScaleTransform x:Name="StatusGlyphS" ScaleX="0.4" ScaleY="0.4"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+                            </Grid>
+                            <TextBlock x:Name="TxtHeaderStatus" Foreground="{DynamicResource TextMuted}" FontSize="12.5" FontWeight="SemiBold"
+                                       VerticalAlignment="Center" MaxWidth="360" TextTrimming="CharacterEllipsis"
+                                       TextWrapping="NoWrap" Text="Pronto"
+                                       ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+                            <ProgressBar x:Name="DownloadBar" Width="130" Height="8" Margin="12,0,0,0"
+                                         Minimum="0" Maximum="100" Visibility="Collapsed" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="BtnBuild" Style="{StaticResource Cta}" Content="Gerar ISO personalizada" Click="Build_Click"/>
+                        <Button x:Name="BtnUsb" Style="{StaticResource Secondary}" Content="Gravar em pendrive" Padding="14,12" Click="BuildUsb_Click"
+                                ToolTip="Grava o Windows personalizado direto num pendrive inicializável, sem gerar arquivo .iso."/>
+                        <Button x:Name="BtnSandbox" Style="{StaticResource Secondary}" Content="Testar (Sandbox)" Padding="14,12" Click="TestSandbox_Click"
+                                ToolTip="Instala os apps numa cópia descartável do Windows (Windows Sandbox), igual à VM."/>
+                        <Button x:Name="BtnDryRun" Style="{StaticResource Secondary}" Content="Somente gerar arquivos" Padding="14,12" Click="DryRun_Click"
+                                ToolTip="Gera o autounattend.xml e a pasta Setup para inspeção, sem criar a ISO."/>
+                        <Button x:Name="BtnTestScript" Style="{StaticResource Secondary}" Content="Script Hyper-V" Padding="14,12" Click="SaveTestScript_Click"
+                                ToolTip="Salva um script que cria uma VM e dá boot na ISO gerada."/>
+                    </StackPanel>
+                </DockPanel>
+                <Grid x:Name="BuildProgressPanel" Margin="0,12,0,0" Visibility="Collapsed">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ProgressBar x:Name="BuildProgress" Height="10" Minimum="0" Maximum="100"/>
+                    <TextBlock Grid.Column="1" Margin="12,0,0,0" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource OsAccent}"
+                               Text="{Binding Value, ElementName=BuildProgress, StringFormat={}{0:0}%}"/>
+                </Grid>
+            </StackPanel>
+            </Border>
+
+            <!-- Fio de identidade: os mesmos 2 px na cor do sistema que o trilho da
+                 tela de escolha usa. E o eco visual mais barato entre as duas telas. -->
+            <Border Height="2" VerticalAlignment="Top" IsHitTestVisible="False"
+                    Background="{DynamicResource OsAccentGradient}"/>
+            <!-- Varredura de conclusao: passa por cima do fio, em verde ou vermelho,
+                 e some revelando o fio de volta. -->
+            <Border x:Name="RailEdge" Height="2" VerticalAlignment="Top" Opacity="0"
+                    IsHitTestVisible="False" RenderTransformOrigin="0,0.5"
+                    Background="{DynamicResource Ok}">
+                <Border.RenderTransform><ScaleTransform x:Name="RailEdgeS" ScaleX="0"/></Border.RenderTransform>
+            </Border>
+        </Grid>
+
+        <!-- ============ CONSOLE DE ATIVIDADE ============
+             Era "#0B1220" cravado: um retângulo preto que destoava no tema claro.
+             Agora usa SurfaceSunken (superfície rebaixada, recuada nos dois temas). -->
+        <Border x:Name="LogPanel" Grid.Column="1" Grid.Row="3" Background="{DynamicResource SurfaceSunken}"
+                BorderBrush="{DynamicResource CardBorder}" BorderThickness="1"
+                Margin="34,10,34,14" CornerRadius="{StaticResource RadiusLg}">
+            <DockPanel Margin="16,11">
+                <DockPanel DockPanel.Dock="Top" Margin="2,0,0,6">
+                    <!-- Recolher: numa tela de 768 o console vazio comia a altura que o
+                         formulario precisava. Quem nao esta acompanhando o log fecha. -->
+                    <!-- 26x26: com Padding 8,2 o alvo do clique nao chegava a 24 px. -->
+                    <Button x:Name="BtnLogToggle" DockPanel.Dock="Right" Style="{StaticResource Secondary}"
+                            Padding="8,2" MinWidth="26" MinHeight="26" Margin="8,0,0,0" FontFamily="Segoe MDL2 Assets" FontSize="10"
+                            Click="ToggleLog_Click"
+                            AutomationProperties.Name="Recolher o console de atividade"
+                            ToolTip="Recolher o console de atividade">
+                            <!-- glifo num TextBlock proprio: o estilo implicito de
+                                 TextBlock define FontFamily e venceria a fonte herdada
+                                 do botao, virando um quadrado vazio -->
+                            <TextBlock x:Name="GlifoBtnLogToggle" FontFamily="Segoe MDL2 Assets"
+                                       FontSize="10" Text="&#xE70D;"
+                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                        </Button>
+                    <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource Ok}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                    <TextBlock Text="ATIVIDADE" Style="{StaticResource LabelText}" LineHeight="10" VerticalAlignment="Center"/>
+                </DockPanel>
+                <TextBox x:Name="TxtLog" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12"
+                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         TextWrapping="NoWrap" Background="Transparent"
+                         Foreground="{DynamicResource TextSecondary}" BorderThickness="0"/>
+            </DockPanel>
+        </Border>
+
+        <!-- ============ CAMADA: ESCOLHA DO SISTEMA ============
+             A escolha do sistema é uma CAMADA desta janela, não outra janela.
+             Antes eram duas: a primeira fechava, a segunda abria, e o app parecia
+             dois programas diferentes. Agora é uma transição dentro da mesma
+             janela — o shell já está montado atrás, só não está visível ainda. -->
+        </Grid><!-- /Shell -->
+
+        <Grid x:Name="PickerLayer" Panel.ZIndex="10">
+            <Grid.RenderTransform>
+                <TranslateTransform x:Name="PickerShift"/>
+            </Grid.RenderTransform>
+        </Grid>
+
+        <!-- ============ CAMADA: ABERTURA ============
+             Terceira e última camada. Fica por cima de tudo enquanto toca e some
+             voando a marca até o lugar dela na tela de baixo. Também é camada, e
+             não janela, exatamente pelo mesmo motivo do seletor: para a passagem
+             de uma tela à outra ser um movimento, não um corte. -->
+        <Grid x:Name="SplashLayer" Panel.ZIndex="20"/>
+    </Grid>
+</Window>

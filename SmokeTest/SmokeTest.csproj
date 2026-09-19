@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>IsoForge.SmokeTest</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\BuildConfig.cs" Link="Models\BuildConfig.cs" />
+    <Compile Include="..\Models\TargetOs.cs" Link="Models\TargetOs.cs" />
+    <Compile Include="..\Models\LinuxConfig.cs" Link="Models\LinuxConfig.cs" />
+    <Compile Include="..\Core\IsoInspector.cs" Link="Core\IsoInspector.cs" />
+    <!-- Define o enum AppId usado pelo catálogo de aplicativos. -->
+    <Compile Include="..\Core\InstallerFetcher.cs" Link="Core\InstallerFetcher.cs" />
+    <Compile Include="..\Core\IsoTools.cs" Link="Core\IsoTools.cs" />
+    <Compile Include="..\Core\Linux\*.cs" LinkBase="Core\Linux" />
+    <Compile Include="..\Core\UnattendGenerator.cs" Link="Core\UnattendGenerator.cs" />
+    <Compile Include="..\Core\InstallScriptGenerator.cs" Link="Core\InstallScriptGenerator.cs" />
+    <Compile Include="..\Core\SetupCompleteGenerator.cs" Link="Core\SetupCompleteGenerator.cs" />
+    <Compile Include="..\Core\DiskPrepGenerator.cs" Link="Core\DiskPrepGenerator.cs" />
+    <Compile Include="..\Core\AppPresets.cs" Link="Core\AppPresets.cs" />
+    <Compile Include="..\Core\IsoPipeline.cs" Link="Core\IsoPipeline.cs" />
+    <Compile Include="..\Core\Oscdimg.cs" Link="Core\Oscdimg.cs" />
+    <Compile Include="..\Core\TestScripts.cs" Link="Core\TestScripts.cs" />
+    <Compile Include="..\Core\ExtraScriptsGenerator.cs" Link="Core\ExtraScriptsGenerator.cs" />
+    <Compile Include="..\Core\UnitSelectorGenerator.cs" Link="Core\UnitSelectorGenerator.cs" />
+    <Compile Include="..\Core\OfficeConfig.cs" Link="Core\OfficeConfig.cs" />
+    <Compile Include="..\Core\OfficeSource.cs" Link="Core\OfficeSource.cs" />
+    <Compile Include="..\Core\FullscreenChrome.cs" Link="Core\FullscreenChrome.cs" />
+    <Compile Include="..\Core\ProgressUiGenerator.cs" Link="Core\ProgressUiGenerator.cs" />
+    <Compile Include="..\Core\GoldenImageScripts.cs" Link="Core\GoldenImageScripts.cs" />
+    <Compile Include="..\Core\DebloatGenerator.cs" Link="Core\DebloatGenerator.cs" />
+    <Compile Include="..\Core\BloatCatalog.cs" Link="Core\BloatCatalog.cs" />
+    <Compile Include="..\Core\UsbWriter.cs" Link="Core\UsbWriter.cs" />
+    <Compile Include="..\Core\ReportGenerator.cs" Link="Core\ReportGenerator.cs" />
+    <Compile Include="..\Core\DriverInfScanner.cs" Link="Core\DriverInfScanner.cs" />
+    <Compile Include="..\Core\IDriverComponentCatalog.cs" Link="Core\IDriverComponentCatalog.cs" />
+    <Compile Include="..\Core\DellComponentCatalog.cs" Link="Core\DellComponentCatalog.cs" />
+    <Compile Include="..\Core\IDriverPackCatalog.cs" Link="Core\IDriverPackCatalog.cs" />
+    <Compile Include="..\Core\DellDriverCatalog.cs" Link="Core\DellDriverCatalog.cs" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,25 @@
+<Window x:Class="IsoForge.UpdateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Atualização do IsoForge" Icon="icon.ico"
+        Width="580" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource WindowBg}">
+    <StackPanel Margin="24">
+        <TextBlock x:Name="TxtTitle" FontSize="19" FontWeight="SemiBold"/>
+        <TextBlock x:Name="TxtSub" Foreground="{StaticResource TextMuted}" Margin="0,4,0,14" TextWrapping="Wrap"/>
+
+        <TextBlock Text="Novidades desta versão:" FontWeight="SemiBold" Margin="0,0,0,6"/>
+        <Border BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Background="#F8FAFF">
+            <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto" Padding="12">
+                <TextBox x:Name="TxtNotes" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                         BorderThickness="0" Background="Transparent" Foreground="{StaticResource TextMain}"/>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Content="Pular esta versão" Click="Skip_Click" Style="{StaticResource Secondary}" Padding="14,8"/>
+            <Button Content="Depois" Click="Later_Click" Style="{StaticResource Secondary}" Margin="8,0,0,0" Padding="14,8"/>
+            <Button Content="Atualizar agora" Click="Update_Click" Margin="8,0,0,0" Padding="16,8"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -1,0 +1,122 @@
+name: Release
+
+# Ao criar uma tag vX.Y.Z, compila o exe + instalador e publica a release com o .exe.
+# Fluxo para lançar uma nova versão:  git tag v1.2.0 && git push origin v1.2.0
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # histórico completo + tags (para gerar as notas)
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Derivar versão da tag
+        id: ver
+        shell: pwsh
+        run: |
+          $v = "${{ github.ref_name }}".TrimStart('v')
+          "version=$v" >> $env:GITHUB_OUTPUT
+          Write-Host "Versão: $v"
+
+      - name: Gerar notas da versão (a partir dos commits desde a tag anterior)
+        id: notes
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $prev = (git describe --tags --abbrev=0 "$tag^" 2>$null)
+          $range = if ($prev) { "$prev..$tag" } else { $tag }
+          $log = (git log $range --no-merges --pretty=format:"- %s") -join "`n"
+          if ([string]::IsNullOrWhiteSpace($log)) { $log = "- Atualização de manutenção." }
+          Write-Host $log
+          "notes<<__EOF__" >> $env:GITHUB_OUTPUT
+          "$log" >> $env:GITHUB_OUTPUT
+          "__EOF__" >> $env:GITHUB_OUTPUT
+
+      - name: SmokeTest (validação)
+        run: dotnet run --project SmokeTest -c Debug --nologo
+
+      - name: Publicar executável único
+        run: dotnet publish IsoForge.csproj -c Release --nologo -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: choco install innosetup -y --no-progress
+
+      - name: Gerar instalador
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /DAppVersion=${{ steps.ver.outputs.version }} installer\IsoForge.iss
+
+      # PORTATIL: o mesmo executavel que o instalador coloca em Program Files, so que
+      # solto. O publish ja sai como arquivo unico e autocontido (ver IsoForge.csproj),
+      # entao nao ha nada a empacotar junto — quem baixa extrai e roda.
+      #
+      # O .zip existe porque o navegador e o SmartScreen tratam um .exe solto baixado da
+      # internet muito pior que um .zip, e porque o nome com versao evita a pasta de
+      # downloads virar um monte de "IsoForge.exe (3)".
+      - name: Montar a versão portátil
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $exe = "bin\Release\net8.0-windows\win-x64\publish\IsoForge.exe"
+          if (-not (Test-Path $exe)) { throw "executável publicado não encontrado em $exe" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item $exe "dist\IsoForge.exe" -Force
+          Copy-Item README.md "dist\LEIA-ME.md" -Force
+          Compress-Archive -Path "dist\IsoForge.exe","dist\LEIA-ME.md" -DestinationPath "dist\IsoForge-$v-portatil.zip" -Force
+          Remove-Item "dist\IsoForge.exe","dist\LEIA-ME.md" -Force
+          Copy-Item "dist\IsoForge-Setup.exe" "dist\IsoForge-$v-Setup.exe" -Force
+          Get-ChildItem dist | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}} | Format-Table -AutoSize
+
+      # As somas conferem que o arquivo baixado e o que o CI produziu. Custa uma linha e
+      # e a unica forma de quem baixa saber que o binario nao foi trocado no caminho.
+      - name: Somas de verificação
+        id: hash
+        shell: pwsh
+        run: |
+          $v = "${{ steps.ver.outputs.version }}"
+          $linhas = foreach ($f in "IsoForge-$v-Setup.exe", "IsoForge-$v-portatil.zip") {
+            $h = (Get-FileHash "dist\$f" -Algorithm SHA256).Hash.ToLower()
+            "| ``$f`` | ``$h`` |"
+          }
+          "tabela<<__EOF__" >> $env:GITHUB_OUTPUT
+          ($linhas -join "`n") >> $env:GITHUB_OUTPUT
+          "__EOF__" >> $env:GITHUB_OUTPUT
+
+      - name: Publicar release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: IsoForge ${{ steps.ver.outputs.version }}
+          body: |
+            ## Novidades da versão ${{ steps.ver.outputs.version }}
+
+            ${{ steps.notes.outputs.notes }}
+
+            ## Download
+
+            | Arquivo | Para quem |
+            |---|---|
+            | **IsoForge-${{ steps.ver.outputs.version }}-Setup.exe** | Instala no computador, com atalhos e desinstalador. É a opção normal. |
+            | **IsoForge-${{ steps.ver.outputs.version }}-portatil.zip** | Não instala nada: extraia e execute. Útil em máquina emprestada ou para levar num pendrive. |
+
+            Os dois contêm exatamente o mesmo programa. Não é preciso ter .NET instalado.
+
+            ### SHA-256
+
+            | Arquivo | Soma |
+            |---|---|
+            ${{ steps.hash.outputs.tabela }}
+          files: |
+            dist/IsoForge-${{ steps.ver.outputs.version }}-Setup.exe
+            dist/IsoForge-${{ steps.ver.outputs.version }}-portatil.zip
