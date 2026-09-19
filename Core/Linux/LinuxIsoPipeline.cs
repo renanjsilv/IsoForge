@@ -72,9 +72,7 @@ public class LinuxIsoPipeline
             // 901 arquivos): 3,7 s com -o contra 1,4 s sem (2,6x), e a ISO saiu do MESMO
             // tamanho -- numa imagem do Windows quase nao ha duplicatas, entao era hash
             // puro por nada.
-            var args = $"-m -u2 -udfver102 -l{label} \"{staging}\" \"{cfg.OutputIsoPath}\"";
-            var exit = await IsoTools.RunAsync(cfg.OscdimgPath, args, Log, ct);
-            if (exit != 0) throw new InvalidOperationException($"oscdimg falhou com código {exit}.");
+            await CompilarSemBootAsync(cfg, staging, label, ct);
             Pct(100);
 
             var kb = new FileInfo(cfg.OutputIsoPath).Length / 1024.0;
@@ -106,24 +104,18 @@ public class LinuxIsoPipeline
 
         try
         {
-            string label;
-            var (drive, isoLabel) = await IsoTools.MountAsync(cfg.SourceIsoPath, Log, ct);
-            try
-            {
-                // O rótulo já entra normalizado: a família RHEL localiza o ks.cfg por ele
-                // (inst.ks=hd:LABEL=...), então os parâmetros de boot e a ISO de saída
-                // precisam usar exatamente o mesmo texto.
-                label = SanitizeLabel(string.IsNullOrWhiteSpace(isoLabel) ? DefaultLabel(cfg) : isoLabel, cfg);
-                Log($"ISO montada em {drive}: (rótulo original: {isoLabel}; rótulo da ISO gerada: {label})");
-                Pct(10);
-                await IsoTools.ExtractAsync(drive, staging, Log, ct);
-                Pct(50);
-            }
-            finally
-            {
-                await IsoTools.DismountAsync(cfg.SourceIsoPath);
-                Log("ISO de origem desmontada.");
-            }
+            // Monta e copia no Windows, extrai direto do arquivo no Linux: quem decide é o
+            // AbrirIsoAsync, que devolve o rótulo do volume nos dois casos.
+            Pct(10);
+            var isoLabel = await IsoTools.AbrirIsoAsync(cfg.SourceIsoPath, staging, Log, ct);
+            Pct(50);
+
+            // O rótulo já entra normalizado: a família RHEL localiza o ks.cfg por ele
+            // (inst.ks=hd:LABEL=...), então os parâmetros de boot e a ISO de saída
+            // precisam usar exatamente o mesmo texto.
+            var label = SanitizeLabel(string.IsNullOrWhiteSpace(isoLabel) ? DefaultLabel(cfg) : isoLabel, cfg);
+            Log($"Rótulo original: {(string.IsNullOrWhiteSpace(isoLabel) ? "(sem rótulo)" : isoLabel)}; " +
+                $"rótulo da ISO gerada: {label}");
 
             IsoTools.ClearReadOnly(new DirectoryInfo(staging));
 
@@ -184,6 +176,12 @@ public class LinuxIsoPipeline
             Log("Aviso: o xorriso falhou; usando o oscdimg (boot UEFI).");
         }
 
+        if (!Plataforma.EhWindows)
+            throw new InvalidOperationException(
+                "Sem o xorriso não há como recompilar uma ISO bootável fora do Windows. " +
+                "Instale-o: 'sudo apt install xorriso' (Debian/Ubuntu), 'sudo dnf install xorriso' " +
+                "(Fedora/RHEL) ou 'sudo pacman -S libisoburn' (Arch).");
+
         // Sem xorriso: o oscdimg reconstrói o El Torito a partir das imagens extraídas.
         // O boot UEFI fica íntegro; o BIOS legado depende da tabela de informações do
         // isolinux, que o oscdimg não regrava — por isso o aviso.
@@ -206,6 +204,32 @@ public class LinuxIsoPipeline
         if (bios != null)
             Log("Aviso: a ISO foi reconstruída com o oscdimg — o boot UEFI está garantido, mas o BIOS " +
                 "legado pode não funcionar. Instale o xorriso e gere de novo se precisar de boot legado.");
+    }
+
+    /// <summary>
+    /// Compila uma ISO sem boot — a "seed", que só carrega o arquivo de resposta.
+    /// No Windows é o oscdimg de sempre; fora dele, o xorriso.
+    /// </summary>
+    async Task CompilarSemBootAsync(BuildConfig cfg, string staging, string label, CancellationToken ct)
+    {
+        if (Plataforma.EhWindows)
+        {
+            // Sem "-o", de proposito. O -o faz o oscdimg calcular MD5 de TODO arquivo para
+            // gravar duplicatas uma vez so -- hash puro por nada numa arvore desta.
+            var args = $"-m -u2 -udfver102 -l{label} \"{staging}\" \"{cfg.OutputIsoPath}\"";
+            var exit = await IsoTools.RunAsync(cfg.OscdimgPath, args, Log, ct);
+            if (exit != 0) throw new InvalidOperationException($"oscdimg falhou com código {exit}.");
+            return;
+        }
+
+        var xorriso = IsoTools.FindXorriso() ?? throw new InvalidOperationException(
+            "xorriso não encontrado. Instale-o: 'sudo apt install xorriso' (Debian/Ubuntu), " +
+            "'sudo dnf install xorriso' (Fedora/RHEL) ou 'sudo pacman -S libisoburn' (Arch).");
+
+        var argsX = "-as mkisofs -iso-level 3 -full-iso9660-filenames -joliet -joliet-long -rational-rock " +
+                    $"-volid \"{label}\" -output \"{cfg.OutputIsoPath}\" \"{staging}\"";
+        var saida = await IsoTools.RunAsync(xorriso, argsX, Log, ct);
+        if (saida != 0) throw new InvalidOperationException($"xorriso falhou com código {saida}.");
     }
 
     /// <summary>Reconstrói a ISO com o xorriso, preservando boot UEFI + BIOS (híbrida).</summary>
@@ -351,8 +375,18 @@ public class LinuxIsoPipeline
             }
             if (string.IsNullOrWhiteSpace(cfg.OutputIsoPath))
                 throw new InvalidOperationException("Informe onde salvar a ISO personalizada.");
-            if (string.IsNullOrWhiteSpace(cfg.OscdimgPath) || !File.Exists(cfg.OscdimgPath))
-                throw new InvalidOperationException(Oscdimg.InstallHint);
+            // O oscdimg é ferramenta do Windows ADK; fora do Windows quem compila é o xorriso.
+            if (Plataforma.EhWindows)
+            {
+                if (string.IsNullOrWhiteSpace(cfg.OscdimgPath) || !File.Exists(cfg.OscdimgPath))
+                    throw new InvalidOperationException(Oscdimg.InstallHint);
+            }
+            else if (IsoTools.FindXorriso() == null)
+            {
+                throw new InvalidOperationException(
+                    "xorriso não encontrado. Instale-o: 'sudo apt install xorriso' (Debian/Ubuntu), " +
+                    "'sudo dnf install xorriso' (Fedora/RHEL) ou 'sudo pacman -S libisoburn' (Arch).");
+            }
         }
 
         if (string.IsNullOrWhiteSpace(cfg.UserName))

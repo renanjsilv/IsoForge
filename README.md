@@ -23,6 +23,9 @@ configura VPN e aparência, nomeia a máquina pela unidade e reinicia pronta par
 
 Foi escrito para quem formata muitas máquinas e precisa que todas saiam iguais.
 
+Há **duas versões**: a do Windows, que personaliza ISOs do Windows e do Linux, e a do
+**Linux**, que personaliza as ISOs das distribuições. As duas compartilham o mesmo núcleo.
+
 <div align="center">
 <img src="docs/00-abertura.gif" width="720" alt="Abertura do IsoForge"/>
 </div>
@@ -31,23 +34,43 @@ Foi escrito para quem formata muitas máquinas e precisa que todas saiam iguais.
 
 ## Baixar
 
-Duas formas, com o mesmo programa dentro. Não é preciso ter o .NET instalado.
+Nenhum dos arquivos precisa do .NET instalado.
+
+### Windows
 
 | Arquivo | Para quem |
 |---|---|
 | **IsoForge-1.0.0-Setup.exe** | Instala no computador, com atalhos e desinstalador. É a opção normal. |
 | **IsoForge-1.0.0-portatil.zip** | Não instala nada: extraia e execute. Útil em máquina emprestada ou para levar num pendrive. |
 
+### Linux
+
+| Arquivo | Para quem |
+|---|---|
+| **IsoForge-1.0.0-amd64.deb** | Debian, Ubuntu, Mint: `sudo apt install ./IsoForge-1.0.0-amd64.deb` |
+| **IsoForge-1.0.0-linux-x64.tar.gz** | Qualquer distribuição, PC de 64 bits. Extraia e execute. |
+| **IsoForge-1.0.0-linux-arm64.tar.gz** | Qualquer distribuição, ARM de 64 bits. |
+
 ➡️ **[Baixar a versão mais recente](https://github.com/renanjsilv/IsoForge/releases/latest)**
 
-Cada release traz as somas SHA-256 dos dois arquivos, para conferir o que você baixou.
+Cada release traz as somas SHA-256 de todos os arquivos, para conferir o que você baixou.
 
 ### O que é preciso ter
 
+**No Windows:**
+
 - Windows 10 ou 11 (64 bits)
-- Uma ISO oficial do sistema que você vai personalizar
 - **Administrador** para gerar a ISO (montar a imagem) e para gravar em pendrive
 - ~15 GB livres durante a geração
+
+**No Linux:**
+
+- Um ambiente gráfico (X11 ou Wayland)
+- **xorriso** — `sudo apt install xorriso` / `dnf install xorriso` / `pacman -S libisoburn`
+- **bsdtar** ou **7z**, para o modo que reempacota a ISO oficial
+- **pkexec** (policykit), se você for gravar em pendrive pelo programa
+
+Dos dois lados: a ISO oficial do sistema que você vai personalizar.
 
 ---
 
@@ -103,6 +126,55 @@ unidade primeiro, depois o progresso com o ícone de cada programa.
 
 ---
 
+## O IsoForge rodando no Linux
+
+A versão Linux é o **mesmo programa**: os arquivos de `Core/` e `Models/` entram nos dois
+projetos por referência, não por cópia, e são os mesmos que a suíte de testes valida. O que
+muda é a casca — o Windows usa WPF, que não existe fora dele; no Linux é
+[Avalonia](https://avaloniaui.net).
+
+<div align="center">
+<img src="docs/linux-01-distribuicao.png" width="85%" alt="Escolha da distribuição"/>
+</div>
+
+Ela personaliza **as nove distribuições**, com tudo o que a versão do Windows faz nelas:
+usuário, disco (com LUKS opcional), região e teclado, programas, SSH, Wi-Fi, aparência,
+otimização e script pós-instalação.
+
+**O que ela não faz:** personalizar ISOs **do Windows**. A injeção de drivers depende do DISM
+e a recompilação da imagem depende do `oscdimg`, e os dois são ferramentas do Windows sem
+equivalente prático fora dele. Para ISOs do Windows, use a versão do Windows.
+
+### Como ela gera a ISO
+
+| Etapa | Windows | Linux |
+|---|---|---|
+| Ler o rótulo da ISO | monta a imagem | lê o descritor ISO 9660 direto do arquivo |
+| Extrair | `Mount-DiskImage` + robocopy | `bsdtar`, `7z` ou `xorriso -osirrox` |
+| Recompilar | `oscdimg` (ou xorriso) | `xorriso` |
+| Gravar em pendrive | prepara GPT + FAT32 | `dd` da imagem, via `pkexec` |
+
+Nada disso precisa de root, **exceto** gravar no pendrive.
+
+### As telas do Linux
+
+<div align="center">
+
+| | |
+|:--:|:--:|
+| ![ISO](docs/linux-02-iso.png) | ![Sistema e usuário](docs/linux-03-sistema-usuario.png) |
+| **ISO** | **Sistema e usuário** |
+| ![Aplicativos](docs/linux-04-aplicativos.png) | ![Personalização](docs/linux-05-personalizacao.png) |
+| **Aplicativos** | **Personalização** |
+
+</div>
+
+Na aba **Aplicativos**, cada card diz o que vai ser instalado de fato: o Office 365 vira
+LibreOffice, o Adobe Reader vira Evince, o Notepad++ vira Geany. A substituição fica escrita
+na tela e no relatório, em vez de acontecer em silêncio.
+
+---
+
 ## Como usar
 
 1. **Escolha o sistema** que vai personalizar. Isso define as abas, o catálogo de programas
@@ -132,7 +204,7 @@ escolhido é reconferido no instante da gravação — não vale o que a tela ti
 
 ---
 
-## As telas
+## As telas do Windows
 
 <div align="center">
 
@@ -161,10 +233,23 @@ O IsoForge reduz o estrago onde dá: ele fecha o `C:\Setup` na máquina provisio
 (só SYSTEM e Administradores) e apaga o perfil de Wi-Fi do disco assim que o sistema
 o importa.
 
-**Os instaladores vêm da internet.** O IsoForge baixa os programas dos sites oficiais por
-HTTPS e os embute na ISO, onde rodam como administrador. Ele confere a identidade do que
-baixa quando o formato permite, mas não há assinatura de fabricante verificada em todos.
-Se o seu ambiente exige, aponte instaladores seus.
+**Os instaladores vêm da internet.** No Windows, o IsoForge baixa os programas dos sites
+oficiais por HTTPS e os embute na ISO, onde rodam como administrador. Ele confere a identidade
+do que baixa quando o formato permite, mas não há assinatura de fabricante verificada em todos.
+Se o seu ambiente exige, aponte instaladores seus. No Linux não há esse risco: nada é embutido,
+os programas vêm dos repositórios da própria distribuição, com a assinatura dela.
+
+**A configuração local fica cifrada.** No Windows, com DPAPI — a chave é da sua conta do
+Windows e copiar o `settings.dat` para outra máquina não adianta. No Linux não existe DPAPI:
+a chave é um arquivo com permissão `0600` na sua pasta pessoal e os dados vão em AES-GCM.
+Isso impede que um backup ou outro usuário da máquina leiam o arquivo; **não** protege contra
+quem já entrou como você.
+
+**O que ainda não foi exercitado em hardware.** A gravação em pendrive da versão Linux (um
+`dd` da imagem, elevado por `pkexec`) foi escrita e revisada, mas nunca rodou contra um
+pendrive de verdade. As ISOs geradas são conferidas por dentro a cada push do CI, e não
+foram inicializadas numa máquina física. Teste numa VM antes de confiar nelas para formatar
+o equipamento de alguém.
 
 ---
 
@@ -173,13 +258,25 @@ Se o seu ambiente exige, aponte instaladores seus.
 ```bash
 git clone https://github.com/renanjsilv/IsoForge.git
 cd IsoForge
-dotnet build IsoForge.csproj          # aplicativo (WPF, .NET 8)
-dotnet run --project SmokeTest         # a suíte de testes
+
+dotnet build IsoForge.csproj              # aplicativo do Windows (WPF, .NET 8)
+dotnet run   --project SmokeTest          # suíte do Windows
+
+dotnet build linux/IsoForge.Linux.csproj  # aplicativo do Linux (Avalonia, .NET 8)
+dotnet run   --project SmokeTestLinux     # suíte do Linux
 ```
 
-A suíte tem **728 verificações** e não precisa de ISO, de rede nem de interface: ela gera
-os artefatos (`autounattend.xml`, `install.cmd`, os `.ps1`, os arquivos de resposta do
-Linux) e afirma coisas sobre eles. Termina com `TODOS OS TESTES PASSARAM`.
+A suíte do Windows tem **728 verificações** e não precisa de ISO, de rede nem de interface:
+ela gera os artefatos (`autounattend.xml`, `install.cmd`, os `.ps1`, os arquivos de resposta
+do Linux) e afirma coisas sobre eles. Termina com `TODOS OS TESTES PASSARAM`.
+
+A suíte do Linux prova o que só dá para provar do outro lado, e **gera ISOs de verdade** para
+isso: ela fabrica uma ISO de origem com o xorriso, manda o IsoForge reempacotá-la e depois
+abre a imagem gerada para conferir que o arquivo de resposta entrou e que o menu do GRUB saiu
+com os parâmetros da instalação automática. Roda no CI a cada push.
+
+O aplicativo do Linux compila e roda também no Windows e no macOS — é assim que as capturas
+de tela acima foram feitas.
 
 Ferramentas de apoio, que também servem para suporte:
 

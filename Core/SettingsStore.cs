@@ -13,8 +13,24 @@ namespace IsoForge.Core;
 /// </summary>
 public static class SettingsStore
 {
-    static string Dir => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "IsoForge");
+    /// <summary>
+    /// Pasta da configuração. Normalmente %APPDATA%\IsoForge no Windows e ~/.config/IsoForge
+    /// no Linux; a variável ISOFORGE_CONFIG desvia para outra pasta, o que permite manter
+    /// perfis separados na mesma máquina e gerar as capturas de tela do projeto sem tocar na
+    /// configuração de quem está usando o programa. A CHAVE continua no perfil do usuário,
+    /// de propósito: uma configuração levada para outra máquina não abre lá, e é isso mesmo
+    /// que se espera de um arquivo que guarda senhas.
+    /// </summary>
+    static string Dir
+    {
+        get
+        {
+            var escolhida = Environment.GetEnvironmentVariable("ISOFORGE_CONFIG");
+            return string.IsNullOrWhiteSpace(escolhida)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "IsoForge")
+                : escolhida;
+        }
+    }
 
     // Formato atual (cifrado) e o antigo (texto puro), para migração.
     public static string FilePath => Path.Combine(Dir, "settings.dat");
@@ -28,7 +44,7 @@ public static class SettingsStore
         {
             Directory.CreateDirectory(Dir);
             var json = JsonSerializer.SerializeToUtf8Bytes(c, Opts);
-            var enc = ProtectedData.Protect(json, null, DataProtectionScope.CurrentUser);
+            var enc = Cofre.Cifrar(json);
             File.WriteAllBytes(FilePath, enc);
             // Remove qualquer resquício em texto puro de versões anteriores.
             if (File.Exists(LegacyJsonPath)) File.Delete(LegacyJsonPath);
@@ -42,7 +58,7 @@ public static class SettingsStore
         {
             if (File.Exists(FilePath))
                 return JsonSerializer.Deserialize<BuildConfig>(
-                    ProtectedData.Unprotect(File.ReadAllBytes(FilePath), null, DataProtectionScope.CurrentUser));
+                    Cofre.Decifrar(File.ReadAllBytes(FilePath)));
             // Migração do formato antigo (texto puro): lê e o próximo Save já grava cifrado.
             if (File.Exists(LegacyJsonPath))
                 return JsonSerializer.Deserialize<BuildConfig>(File.ReadAllText(LegacyJsonPath));
@@ -79,7 +95,7 @@ public static class SettingsStore
         {
             Directory.CreateDirectory(ProfilesDir);
             var json = JsonSerializer.SerializeToUtf8Bytes(c, Opts);
-            File.WriteAllBytes(ProfilePath(name), ProtectedData.Protect(json, null, DataProtectionScope.CurrentUser));
+            File.WriteAllBytes(ProfilePath(name), Cofre.Cifrar(json));
         }
         catch { }
     }
@@ -91,7 +107,7 @@ public static class SettingsStore
             var p = ProfilePath(name);
             if (File.Exists(p))
                 return JsonSerializer.Deserialize<BuildConfig>(
-                    ProtectedData.Unprotect(File.ReadAllBytes(p), null, DataProtectionScope.CurrentUser));
+                    Cofre.Decifrar(File.ReadAllBytes(p)));
         }
         catch { }
         return null;

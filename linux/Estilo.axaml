@@ -1,0 +1,221 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    Os mesmos tokens do Theme.xaml do aplicativo do Windows. Repetidos aqui e não importados
+    porque o formato é outro (Avalonia não lê ResourceDictionary do WPF), mas os valores são
+    os mesmos: mudar a cor de destaque em um lugar e não no outro deixaria os dois aplicativos
+    visivelmente diferentes, o que seria pior que a duplicação.
+  -->
+  <Styles.Resources>
+    <Color x:Key="CorDestaque">#2563EB</Color>
+    <SolidColorBrush x:Key="Destaque"        Color="#2563EB"/>
+    <SolidColorBrush x:Key="DestaqueHover"   Color="#1D4ED8"/>
+    <SolidColorBrush x:Key="DestaquePress"   Color="#1E40AF"/>
+    <SolidColorBrush x:Key="DestaqueSuave"   Color="#DBEAFE"/>
+    <SolidColorBrush x:Key="FundoJanela"     Color="#F1F4FB"/>
+    <SolidColorBrush x:Key="FundoCartao"     Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="BordaCartao"     Color="#E5EAF3"/>
+    <SolidColorBrush x:Key="BordaCampo"      Color="#CBD5E1"/>
+    <SolidColorBrush x:Key="Texto"           Color="#0F172A"/>
+    <SolidColorBrush x:Key="TextoSecundario" Color="#334155"/>
+    <SolidColorBrush x:Key="TextoApagado"    Color="#556076"/>
+    <SolidColorBrush x:Key="FundoBarra"      Color="#0B1220"/>
+    <SolidColorBrush x:Key="TextoBarra"      Color="#E6EDF6"/>
+    <SolidColorBrush x:Key="TextoBarraFraco" Color="#9FB0C6"/>
+    <SolidColorBrush x:Key="BarraAtiva"      Color="#2E60A5FA"/>
+    <SolidColorBrush x:Key="BarraHover"      Color="#16FFFFFF"/>
+    <SolidColorBrush x:Key="BarraDestaque"   Color="#7FB0FF"/>
+    <SolidColorBrush x:Key="Perigo"          Color="#DC2626"/>
+    <SolidColorBrush x:Key="Sucesso"         Color="#16A34A"/>
+    <SolidColorBrush x:Key="FundoAviso"      Color="#FEF3C7"/>
+    <SolidColorBrush x:Key="BordaAviso"      Color="#FCD34D"/>
+    <SolidColorBrush x:Key="TextoAviso"      Color="#92400E"/>
+    <SolidColorBrush x:Key="FundoInfo"       Color="#EFF6FF"/>
+    <SolidColorBrush x:Key="BordaInfo"       Color="#BFDBFE"/>
+    <SolidColorBrush x:Key="TextoInfo"       Color="#1E3A8A"/>
+    <SolidColorBrush x:Key="FundoSutil"      Color="#F8FAFC"/>
+    <SolidColorBrush x:Key="FundoFicha"      Color="#F1F5F9"/>
+  </Styles.Resources>
+
+  <!-- ................................................................ Texto -->
+  <Style Selector="TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource Texto}"/>
+    <Setter Property="FontSize" Value="13"/>
+  </Style>
+  <Style Selector="TextBlock.titulo">
+    <Setter Property="FontSize" Value="17"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="TextBlock.cartaoTitulo">
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+  <Style Selector="TextBlock.apagado">
+    <Setter Property="Foreground" Value="{StaticResource TextoApagado}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+  </Style>
+  <Style Selector="TextBlock.rotulo">
+    <Setter Property="Foreground" Value="{StaticResource TextoSecundario}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <!-- ................................................................ Cartão -->
+  <Style Selector="Border.cartao">
+    <Setter Property="Background" Value="{StaticResource FundoCartao}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaCartao}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="12"/>
+    <Setter Property="Padding" Value="18"/>
+    <Setter Property="Margin" Value="0,0,0,14"/>
+  </Style>
+  <Style Selector="Border.aviso">
+    <Setter Property="Background" Value="{StaticResource FundoAviso}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaAviso}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="12,10"/>
+  </Style>
+  <Style Selector="Border.aviso TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource TextoAviso}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+  <Style Selector="Border.info">
+    <Setter Property="Background" Value="{StaticResource FundoInfo}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaInfo}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="12,10"/>
+  </Style>
+  <Style Selector="Border.info TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource TextoInfo}"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+
+  <!-- ................................................................ Botões -->
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{StaticResource FundoCartao}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaCampo}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="16,9"/>
+    <Setter Property="Foreground" Value="{StaticResource Texto}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style Selector="Button:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource FundoSutil}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Destaque}"/>
+  </Style>
+  <Style Selector="Button.primario">
+    <Setter Property="Background" Value="{StaticResource Destaque}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Destaque}"/>
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Padding" Value="22,11"/>
+  </Style>
+  <Style Selector="Button.primario /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.primario:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource DestaqueHover}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource DestaqueHover}"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.primario:pressed /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource DestaquePress}"/>
+    <Setter Property="Foreground" Value="White"/>
+  </Style>
+  <Style Selector="Button.perigo /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{StaticResource Perigo}"/>
+  </Style>
+
+  <!-- ................................................................ Campos -->
+  <Style Selector="TextBox">
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="10,8"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaCampo}"/>
+    <Setter Property="Background" Value="{StaticResource FundoCartao}"/>
+  </Style>
+  <Style Selector="ComboBox">
+    <Setter Property="CornerRadius" Value="8"/>
+    <Setter Property="Padding" Value="10,7"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaCampo}"/>
+    <Setter Property="Background" Value="{StaticResource FundoCartao}"/>
+    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+  </Style>
+  <Style Selector="CheckBox">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{StaticResource Texto}"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+
+  <!-- ............................................................ Barra lateral -->
+  <Style Selector="ListBox.navegacao">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="0"/>
+    <Setter Property="Padding" Value="10,6"/>
+  </Style>
+  <Style Selector="ListBox.navegacao ListBoxItem">
+    <Setter Property="Foreground" Value="{StaticResource TextoBarraFraco}"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Padding" Value="14,11"/>
+    <Setter Property="Margin" Value="0,2"/>
+    <Setter Property="CornerRadius" Value="9"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <!--
+    A cor do texto vai no ContentPresenter, nao no ListBoxItem: o tema Fluent pinta o
+    apresentador dentro do proprio template, e um Foreground no item nao chega la. Com o
+    fundo da barra sendo azul-marinho, errar isso deixa o menu inteiro ilegivel.
+  -->
+  <Style Selector="ListBox.navegacao TextBlock.itemBarra">
+    <Setter Property="Foreground" Value="{StaticResource TextoBarraFraco}"/>
+  </Style>
+  <Style Selector="ListBox.navegacao ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource BarraHover}"/>
+  </Style>
+  <Style Selector="ListBox.navegacao ListBoxItem:pointerover TextBlock.itemBarra">
+    <Setter Property="Foreground" Value="{StaticResource TextoBarra}"/>
+  </Style>
+  <Style Selector="ListBox.navegacao ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource BarraAtiva}"/>
+  </Style>
+  <Style Selector="ListBox.navegacao ListBoxItem:selected TextBlock.itemBarra">
+    <Setter Property="Foreground" Value="White"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+
+  <!-- Cartoes da escolha de distribuicao: o item selecionado precisa se anunciar. -->
+  <Style Selector="ListBox.distros ListBoxItem">
+    <Setter Property="Padding" Value="16"/>
+    <Setter Property="Margin" Value="0,0,14,14"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+  <Style Selector="ListBox.distros ListBoxItem /template/ ContentPresenter">
+    <Setter Property="Background" Value="White"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaCartao}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="12"/>
+  </Style>
+  <Style Selector="ListBox.distros ListBoxItem:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="White"/>
+    <Setter Property="BorderBrush" Value="{StaticResource BordaCampo}"/>
+  </Style>
+  <Style Selector="ListBox.distros ListBoxItem:selected /template/ ContentPresenter">
+    <Setter Property="Background" Value="{StaticResource DestaqueSuave}"/>
+    <Setter Property="BorderBrush" Value="{StaticResource Destaque}"/>
+    <Setter Property="BorderThickness" Value="2"/>
+  </Style>
+
+  <!-- A faixa de abas fica escondida: quem troca de página é a barra lateral. -->
+  <Style Selector="TabControl.paginas /template/ ItemsPresenter#PART_ItemsPresenter">
+    <Setter Property="IsVisible" Value="False"/>
+  </Style>
+
+</Styles>

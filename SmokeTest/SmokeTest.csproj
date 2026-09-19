@@ -16,6 +16,7 @@
     <!-- Define o enum AppId usado pelo catálogo de aplicativos. -->
     <Compile Include="..\Core\InstallerFetcher.cs" Link="Core\InstallerFetcher.cs" />
     <Compile Include="..\Core\IsoTools.cs" Link="Core\IsoTools.cs" />
+    <Compile Include="..\Core\Plataforma.cs" Link="Core\Plataforma.cs" />
     <Compile Include="..\Core\Linux\*.cs" LinkBase="Core\Linux" />
     <Compile Include="..\Core\UnattendGenerator.cs" Link="Core\UnattendGenerator.cs" />
     <Compile Include="..\Core\InstallScriptGenerator.cs" Link="Core\InstallScriptGenerator.cs" />

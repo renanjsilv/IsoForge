@@ -7,7 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  build-test:
+  windows:
+    name: Windows
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,3 +22,31 @@ jobs:
 
       - name: SmokeTest (validação)
         run: dotnet run --project SmokeTest -c Debug --nologo
+
+  linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # xorriso compila a ISO; o bsdtar a extrai. São as duas ferramentas externas
+      # que a versão Linux do IsoForge usa, e a suíte exercita as duas.
+      - name: Ferramentas de imagem
+        run: sudo apt-get update && sudo apt-get install -y xorriso libarchive-tools
+
+      - name: Compilar o aplicativo (Avalonia)
+        run: dotnet build linux/IsoForge.Linux.csproj -c Debug --nologo
+
+      - name: Suíte Linux
+        run: dotnet run --project SmokeTestLinux -c Debug --nologo
+
+      # Sem servidor gráfico o app não abre janela — mas --versao não toca na interface,
+      # então serve para provar que o binário publicado roda mesmo nesta máquina.
+      - name: O binário publicado executa
+        run: |
+          dotnet publish linux/IsoForge.Linux.csproj -c Release -r linux-x64 --nologo -p:Version=0.0.0
+          ./linux/bin/Release/net8.0/linux-x64/publish/isoforge --versao

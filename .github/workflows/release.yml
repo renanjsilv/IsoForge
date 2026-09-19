@@ -10,7 +10,50 @@ permissions:
   contents: write
 
 jobs:
+  # ------------------------------------------------------------------
+  # Linux: o mesmo nucleo, casca Avalonia. Roda primeiro e entrega os
+  # arquivos ao job do Windows, que publica a release inteira de uma vez
+  # -- dois jobs publicando na mesma tag disputariam a mesma release.
+  # ------------------------------------------------------------------
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Ferramentas de imagem
+        run: sudo apt-get update && sudo apt-get install -y xorriso libarchive-tools
+
+      - name: Derivar versao da tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Suite Linux
+        run: dotnet run --project SmokeTestLinux -c Debug --nologo
+
+      - name: Publicar executaveis (x64 e arm64)
+        run: |
+          set -e
+          v="${{ steps.ver.outputs.version }}"
+          for rid in linux-x64 linux-arm64; do
+            dotnet publish linux/IsoForge.Linux.csproj -c Release -r "$rid" --nologo -p:Version="$v"
+          done
+          ./linux/bin/Release/net8.0/linux-x64/publish/isoforge --versao
+
+      - name: Montar os pacotes
+        run: bash linux/empacotamento/empacotar.sh "${{ steps.ver.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pacotes-linux
+          path: dist/*
+          retention-days: 1
+
   release:
+    needs: linux
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,6 +122,12 @@ jobs:
           Copy-Item "dist\IsoForge-Setup.exe" "dist\IsoForge-$v-Setup.exe" -Force
           Get-ChildItem dist | Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}} | Format-Table -AutoSize
 
+      - name: Trazer os pacotes do Linux
+        uses: actions/download-artifact@v4
+        with:
+          name: pacotes-linux
+          path: dist
+
       # As somas conferem que o arquivo baixado e o que o CI produziu. Custa uma linha e
       # e a unica forma de quem baixa saber que o binario nao foi trocado no caminho.
       - name: Somas de verificação
@@ -86,7 +135,12 @@ jobs:
         shell: pwsh
         run: |
           $v = "${{ steps.ver.outputs.version }}"
-          $linhas = foreach ($f in "IsoForge-$v-Setup.exe", "IsoForge-$v-portatil.zip") {
+          $arquivos = @(
+            "IsoForge-$v-Setup.exe", "IsoForge-$v-portatil.zip",
+            "IsoForge-$v-linux-x64.tar.gz", "IsoForge-$v-linux-arm64.tar.gz",
+            "IsoForge-$v-amd64.deb"
+          ) | Where-Object { Test-Path (Join-Path 'dist' $_) }
+          $linhas = foreach ($f in $arquivos) {
             $h = (Get-FileHash "dist\$f" -Algorithm SHA256).Hash.ToLower()
             "| ``$f`` | ``$h`` |"
           }
@@ -105,12 +159,27 @@ jobs:
 
             ## Download
 
+            ### Windows
+
             | Arquivo | Para quem |
             |---|---|
             | **IsoForge-${{ steps.ver.outputs.version }}-Setup.exe** | Instala no computador, com atalhos e desinstalador. É a opção normal. |
             | **IsoForge-${{ steps.ver.outputs.version }}-portatil.zip** | Não instala nada: extraia e execute. Útil em máquina emprestada ou para levar num pendrive. |
 
-            Os dois contêm exatamente o mesmo programa. Não é preciso ter .NET instalado.
+            Personaliza ISOs do Windows 10/11 **e** das nove distribuições Linux.
+
+            ### Linux
+
+            | Arquivo | Para quem |
+            |---|---|
+            | **IsoForge-${{ steps.ver.outputs.version }}-amd64.deb** | Debian, Ubuntu, Mint. `sudo apt install ./IsoForge-*.deb` |
+            | **IsoForge-${{ steps.ver.outputs.version }}-linux-x64.tar.gz** | Qualquer distribuição, PC de 64 bits. Extraia e execute. |
+            | **IsoForge-${{ steps.ver.outputs.version }}-linux-arm64.tar.gz** | Qualquer distribuição, ARM de 64 bits. |
+
+            Personaliza as nove distribuições Linux. Precisa do **xorriso** instalado
+            (`sudo apt install xorriso`).
+
+            Nenhum deles precisa do .NET instalado.
 
             ### SHA-256
 
@@ -120,3 +189,6 @@ jobs:
           files: |
             dist/IsoForge-${{ steps.ver.outputs.version }}-Setup.exe
             dist/IsoForge-${{ steps.ver.outputs.version }}-portatil.zip
+            dist/IsoForge-${{ steps.ver.outputs.version }}-amd64.deb
+            dist/IsoForge-${{ steps.ver.outputs.version }}-linux-x64.tar.gz
+            dist/IsoForge-${{ steps.ver.outputs.version }}-linux-arm64.tar.gz

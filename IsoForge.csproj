@@ -16,10 +16,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- SmokeTest é um projeto separado; não faz parte do app -->
-    <Compile Remove="SmokeTest\**" />
-    <None Remove="SmokeTest\**" />
-    <Page Remove="SmokeTest\**" />
+    <!--
+      Projetos separados que moram dentro desta pasta. Sem estes Remove, o glob padrão do SDK
+      arrastaria o código deles (e o obj/ deles) para dentro do aplicativo do Windows.
+    -->
+    <Compile Remove="SmokeTest\**;SmokeTestLinux\**;linux\**" />
+    <None Remove="SmokeTest\**;SmokeTestLinux\**;linux\**" />
+    <Page Remove="SmokeTest\**;SmokeTestLinux\**;linux\**" />
   </ItemGroup>
 
   <ItemGroup>

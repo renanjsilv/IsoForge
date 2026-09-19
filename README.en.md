@@ -23,6 +23,9 @@ VPN and appearance, names the machine after its site, and reboots ready to use.
 
 It was written for people who image a lot of machines and need them all to come out the same.
 
+There are **two builds**: the Windows one, which customizes Windows and Linux ISOs, and the
+**Linux** one, which customizes the distributions' ISOs. Both share the same core.
+
 <div align="center">
 <img src="docs/00-abertura.gif" width="720" alt="IsoForge opening"/>
 </div>
@@ -31,23 +34,43 @@ It was written for people who image a lot of machines and need them all to come 
 
 ## Download
 
-Two forms, same program inside. No .NET install required.
+None of these need .NET installed.
+
+### Windows
 
 | File | Who it's for |
 |---|---|
 | **IsoForge-1.0.0-Setup.exe** | Installs on the machine, with shortcuts and an uninstaller. The normal choice. |
 | **IsoForge-1.0.0-portatil.zip** | Installs nothing: extract and run. Handy on a borrowed machine or from a USB stick. |
 
+### Linux
+
+| File | Who it's for |
+|---|---|
+| **IsoForge-1.0.0-amd64.deb** | Debian, Ubuntu, Mint: `sudo apt install ./IsoForge-1.0.0-amd64.deb` |
+| **IsoForge-1.0.0-linux-x64.tar.gz** | Any distribution, 64-bit PC. Extract and run. |
+| **IsoForge-1.0.0-linux-arm64.tar.gz** | Any distribution, 64-bit ARM. |
+
 ➡️ **[Get the latest release](https://github.com/renanjsilv/IsoForge/releases/latest)**
 
-Every release lists the SHA-256 of both files so you can check what you downloaded.
+Every release lists the SHA-256 of every file so you can check what you downloaded.
 
 ### Requirements
 
+**On Windows:**
+
 - Windows 10 or 11 (64-bit)
-- An official ISO of the system you are customizing
 - **Administrator** to build the ISO (mounting the image) and to write a USB stick
 - ~15 GB free while building
+
+**On Linux:**
+
+- A graphical session (X11 or Wayland)
+- **xorriso** — `sudo apt install xorriso` / `dnf install xorriso` / `pacman -S libisoburn`
+- **bsdtar** or **7z**, for the mode that repacks the official ISO
+- **pkexec** (policykit), if you want the program to write your USB stick
+
+Either way: an official ISO of the system you are customizing.
 
 > The interface is in Brazilian Portuguese.
 
@@ -104,6 +127,55 @@ site picker first, then progress with each program's icon.
 
 ---
 
+## IsoForge on Linux
+
+The Linux build is the **same program**: the files under `Core/` and `Models/` are referenced
+by both projects rather than copied, and they are the ones the test suite validates. Only the
+shell differs — Windows uses WPF, which does not exist elsewhere; on Linux it is
+[Avalonia](https://avaloniaui.net).
+
+<div align="center">
+<img src="docs/linux-01-distribuicao.png" width="85%" alt="Distribution picker"/>
+</div>
+
+It customizes **all nine distributions**, with everything the Windows build does for them:
+user, disk (with optional LUKS), locale and keyboard, software, SSH, Wi-Fi, appearance,
+tuning and a post-install script.
+
+**What it does not do:** customize **Windows** ISOs. Driver injection needs DISM and rebuilding
+the image needs `oscdimg`, and both are Windows tools with no practical equivalent elsewhere.
+For Windows ISOs, use the Windows build.
+
+### How it builds the ISO
+
+| Step | Windows | Linux |
+|---|---|---|
+| Read the volume label | mounts the image | reads the ISO 9660 descriptor straight from the file |
+| Extract | `Mount-DiskImage` + robocopy | `bsdtar`, `7z` or `xorriso -osirrox` |
+| Rebuild | `oscdimg` (or xorriso) | `xorriso` |
+| Write a USB stick | prepares GPT + FAT32 | `dd` of the image, through `pkexec` |
+
+None of this needs root, **except** writing the USB stick.
+
+### The screens
+
+<div align="center">
+
+| | |
+|:--:|:--:|
+| ![ISO](docs/linux-02-iso.png) | ![System and user](docs/linux-03-sistema-usuario.png) |
+| **ISO** | **System and user** |
+| ![Software](docs/linux-04-aplicativos.png) | ![Appearance](docs/linux-05-personalizacao.png) |
+| **Software** | **Appearance** |
+
+</div>
+
+On the **Aplicativos** tab every card says what will actually be installed: Office 365 becomes
+LibreOffice, Adobe Reader becomes Evince, Notepad++ becomes Geany. The substitution is written
+on screen and in the report instead of happening silently.
+
+---
+
 ## Using it
 
 1. **Pick the system** you are customizing. That decides the tabs, the software catalog and
@@ -148,10 +220,23 @@ IsoForge limits the damage where it can: it locks down `C:\Setup` on the provisi
 machine (SYSTEM and Administrators only) and deletes the Wi-Fi profile from disk as soon
 as the system imports it.
 
-**Installers come from the internet.** IsoForge downloads software from official sites over
-HTTPS and embeds it in the ISO, where it runs as administrator. It verifies the identity of
-what it downloads where the format allows, but not every download has a verified vendor
-signature. If your environment requires it, point at your own installers.
+**Installers come from the internet.** On Windows, IsoForge downloads software from official
+sites over HTTPS and embeds it in the ISO, where it runs as administrator. It verifies the
+identity of what it downloads where the format allows, but not every download has a verified
+vendor signature. If your environment requires it, point at your own installers. On Linux that
+risk does not apply: nothing is embedded, software comes from the distribution's own repositories
+with the distribution's signature.
+
+**The local configuration is encrypted.** On Windows with DPAPI — the key belongs to your
+Windows account, so copying `settings.dat` to another machine gets you nothing. Linux has no
+DPAPI: the key is a `0600` file in your home directory and the data is AES-GCM. That stops a
+backup or another user on the machine from reading it; it does **not** protect against someone
+already logged in as you.
+
+**What has not been exercised on hardware.** USB writing in the Linux build (a `dd` of the
+image, elevated through `pkexec`) was written and reviewed but has never run against a real
+stick. The generated ISOs are inspected from the inside on every CI push; they have not been
+booted on physical hardware. Test in a VM before trusting them to wipe someone's machine.
 
 ---
 
@@ -160,13 +245,25 @@ signature. If your environment requires it, point at your own installers.
 ```bash
 git clone https://github.com/renanjsilv/IsoForge.git
 cd IsoForge
-dotnet build IsoForge.csproj          # the app (WPF, .NET 8)
-dotnet run --project SmokeTest         # the test suite
+
+dotnet build IsoForge.csproj              # the Windows app (WPF, .NET 8)
+dotnet run   --project SmokeTest          # the Windows suite
+
+dotnet build linux/IsoForge.Linux.csproj  # the Linux app (Avalonia, .NET 8)
+dotnet run   --project SmokeTestLinux     # the Linux suite
 ```
 
-The suite has **728 checks** and needs no ISO, no network and no UI: it generates the
+The Windows suite has **728 checks** and needs no ISO, no network and no UI: it generates the
 artifacts (`autounattend.xml`, `install.cmd`, the `.ps1` files, the Linux answer files) and
 asserts things about them.
+
+The Linux suite proves what can only be proven on that side, and **builds real ISOs** to do
+it: it makes a source ISO with xorriso, has IsoForge repack it, then opens the resulting image
+to check that the answer file made it in and that the GRUB menu came out with the unattended
+boot parameters. It runs in CI on every push.
+
+The Linux app also builds and runs on Windows and macOS — that is how the screenshots above
+were taken.
 
 Support tools:
 

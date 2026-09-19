@@ -1,0 +1,34 @@
+IsoForge para Linux
+===================
+
+Como rodar
+----------
+    ./isoforge
+
+O executável é autocontido: não precisa ter o .NET instalado.
+
+Ferramentas externas
+--------------------
+O IsoForge chama dois programas do sistema:
+
+    xorriso           compila a ISO           OBRIGATÓRIO
+    bsdtar ou 7z      extrai a ISO de origem  só no modo "reempacotar"
+    pkexec            pede a senha para gravar no pendrive
+
+Instalação:
+
+    Debian/Ubuntu   sudo apt install xorriso libarchive-tools
+    Fedora/RHEL     sudo dnf install xorriso bsdtar
+    Arch            sudo pacman -S libisoburn libarchive
+    openSUSE        sudo zypper install xorriso bsdtar
+
+O que ele faz
+-------------
+Pega a ISO oficial de uma das nove distribuições suportadas e devolve outra ISO que
+instala o sistema sozinha: cria o usuário, particiona o disco, instala os programas,
+configura região, teclado, Wi-Fi e aparência.
+
+A ISO gerada carrega a senha do usuário (como hash SHA-512) e, se você preencher, a
+senha do Wi-Fi. Trate o arquivo como material sensível.
+
+github.com/renanjsilv/IsoForge

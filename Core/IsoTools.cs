@@ -15,6 +15,94 @@ public static class IsoTools
     // Montagem / extração
     // ------------------------------------------------------------------
 
+    /// <summary>
+    /// Extrai a ISO de origem para a pasta de trabalho e devolve o rótulo do volume.
+    ///
+    /// No Windows monta a imagem e copia (é o caminho já batido, com o robocopy multithread).
+    /// No Linux não há como montar sem root, então extrai direto do arquivo com o bsdtar, o
+    /// 7z ou o próprio xorriso — o que estiver instalado — e lê o rótulo dos bytes da imagem.
+    /// </summary>
+    public static async Task<string> AbrirIsoAsync(string isoPath, string staging, Action<string> log, CancellationToken ct)
+    {
+        if (Plataforma.EhWindows)
+        {
+            var (drive, label) = await MountAsync(isoPath, log, ct);
+            try
+            {
+                await ExtractAsync(drive, staging, log, ct);
+            }
+            finally
+            {
+                await DismountAsync(isoPath);
+                log("ISO de origem desmontada.");
+            }
+            return label;
+        }
+
+        var rotulo = RotuloDeIso(isoPath);
+        log($"Extraindo conteúdo da ISO (isso pode levar alguns minutos)...");
+        await ExtrairSemMontarAsync(isoPath, staging, log, ct);
+        log("Extração concluída.");
+        return rotulo;
+    }
+
+    /// <summary>
+    /// Lê o rótulo do volume direto dos bytes da ISO, sem montar nada.
+    ///
+    /// O descritor primário do ISO 9660 mora sempre no setor 16 (32768 = 16 × 2048) e o campo
+    /// do rótulo são 32 bytes ASCII no deslocamento 40. É o que a montagem devolveria; ler os
+    /// bytes evita precisar de root no Linux.
+    /// </summary>
+    public static string RotuloDeIso(string isoPath)
+    {
+        try
+        {
+            using var fs = File.OpenRead(isoPath);
+            fs.Seek(32768, SeekOrigin.Begin);
+            var setor = new byte[2048];
+            if (fs.Read(setor, 0, setor.Length) < 72) return "";
+            // Byte 0 = tipo (1 = primário), bytes 1..5 = "CD001".
+            if (setor[0] != 1 || Encoding.ASCII.GetString(setor, 1, 5) != "CD001") return "";
+            return Encoding.ASCII.GetString(setor, 40, 32).Trim(char.MinValue, ' ');
+        }
+        catch { return ""; }
+    }
+
+    /// <summary>Extrai uma ISO sem montá-la, com a primeira ferramenta disponível.</summary>
+    static async Task ExtrairSemMontarAsync(string isoPath, string staging, Action<string> log, CancellationToken ct)
+    {
+        Directory.CreateDirectory(staging);
+
+        var bsdtar = Plataforma.NoCaminho("bsdtar");
+        if (bsdtar != null)
+        {
+            var exit = await RunAsync(bsdtar, $"-x -f \"{isoPath}\" -C \"{staging}\"", log, ct);
+            if (exit == 0) return;
+            log("Aviso: o bsdtar falhou; tentando outra ferramenta.");
+        }
+
+        var sete = Plataforma.NoCaminho("7z", "7zz", "7za");
+        if (sete != null)
+        {
+            var exit = await RunAsync(sete, $"x -y -o\"{staging}\" \"{isoPath}\"", log, ct);
+            if (exit == 0) return;
+            log("Aviso: o 7z falhou; tentando outra ferramenta.");
+        }
+
+        var xorriso = FindXorriso();
+        if (xorriso != null)
+        {
+            // -osirrox é o modo "copiar de dentro da imagem para o disco" do xorriso.
+            var exit = await RunAsync(xorriso,
+                $"-osirrox on -indev \"{isoPath}\" -extract / \"{staging}\"", log, ct);
+            if (exit == 0) return;
+        }
+
+        throw new InvalidOperationException(
+            "Não há como extrair a ISO: instale o bsdtar (pacote libarchive-tools/bsdtar), " +
+            "o p7zip ou o xorriso.");
+    }
+
     /// <summary>Monta a ISO e devolve a letra da unidade e o rótulo do volume.</summary>
     public static async Task<(char Drive, string Label)> MountAsync(string isoPath, Action<string> log, CancellationToken ct)
     {
@@ -103,6 +191,7 @@ public static class IsoTools
 
         try
         {
+            if (!Plataforma.EhWindows) throw new PlatformNotSupportedException();
             var psi = new ProcessStartInfo("cmd.exe", $"/c rd /s /q \"{path}\"")
             {
                 UseShellExecute = false,
@@ -219,6 +308,13 @@ public static class IsoTools
 
     static IEnumerable<string> XorrisoCandidates()
     {
+        if (!Plataforma.EhWindows)
+        {
+            yield return "/usr/bin/xorriso";
+            yield return "/usr/local/bin/xorriso";
+            yield return "/bin/xorriso";
+            yield break;
+        }
         var pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
         yield return Path.Combine(pf, "xorriso", "xorriso.exe");
         yield return @"C:\ProgramData\chocolatey\bin\xorriso.exe";

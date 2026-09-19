@@ -1,0 +1,416 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:m="using:IsoForge.Models"
+        x:Class="IsoForge.Linux.Janela"
+        Title="IsoForge" Width="1180" Height="760"
+        MinWidth="900" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource FundoJanela}">
+
+  <Grid ColumnDefinitions="240,*">
+
+    <!-- ========================================================= barra lateral -->
+    <Border Grid.Column="0" Background="{StaticResource FundoBarra}">
+      <Grid RowDefinitions="Auto,*,Auto">
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="18,20,18,16" Spacing="12">
+          <Image Source="avares://isoforge/Ativos/logo.png" Width="38" Height="38"/>
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="IsoForge" FontSize="18" FontWeight="Bold"
+                       Foreground="{StaticResource TextoBarra}"/>
+            <TextBlock x:Name="TxtSubtitulo" Text="Estúdio de imagens Linux" FontSize="11"
+                       MaxWidth="150" TextWrapping="Wrap"
+                       Foreground="{StaticResource TextoBarraFraco}"/>
+          </StackPanel>
+        </StackPanel>
+
+        <ListBox Grid.Row="1" x:Name="Navegacao" Classes="navegacao" SelectedIndex="0">
+          <!--
+            Texto em TextBlock explicito, e nao como Content de texto puro: o estilo implicito
+            de TextBlock deste aplicativo define uma cor, e ela vence a cor herdada do item no
+            TextBlock que o ContentPresenter criaria sozinho. Com a barra escura, o menu
+            inteiro sumia.
+          -->
+          <ListBoxItem><TextBlock Classes="itemBarra" Text="Distribuição"/></ListBoxItem>
+          <ListBoxItem><TextBlock Classes="itemBarra" Text="ISO"/></ListBoxItem>
+          <ListBoxItem><TextBlock Classes="itemBarra" Text="Sistema e usuário"/></ListBoxItem>
+          <ListBoxItem><TextBlock Classes="itemBarra" Text="Aplicativos"/></ListBoxItem>
+          <ListBoxItem><TextBlock Classes="itemBarra" Text="Personalização"/></ListBoxItem>
+        </ListBox>
+
+        <StackPanel Grid.Row="2" Margin="18,0,18,16" Spacing="2">
+          <TextBlock x:Name="TxtVersao" Text="v1.0.0" FontSize="11"
+                     Foreground="{StaticResource TextoBarraFraco}"/>
+          <TextBlock Text="github.com/renanjsilv/IsoForge" FontSize="11"
+                     Foreground="{StaticResource BarraDestaque}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- ============================================================== conteúdo -->
+    <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,Auto">
+
+      <!-- topo -->
+      <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BordaCartao}"
+              BorderThickness="0,0,0,1" Padding="22,14">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" x:Name="TxtPagina" Text="Distribuição" Classes="titulo"
+                     VerticalAlignment="Center"/>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10">
+            <Border Background="{StaticResource DestaqueSuave}" CornerRadius="16" Padding="14,6"
+                    VerticalAlignment="Center">
+              <TextBlock x:Name="TxtDistro" Text="Ubuntu Desktop" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{StaticResource DestaquePress}"/>
+            </Border>
+            <Button x:Name="BtSalvarPerfil" Content="Salvar configuração"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- páginas -->
+      <TabControl Grid.Row="1" x:Name="Paginas" Classes="paginas" Padding="0" Background="Transparent">
+
+        <!-- ................................................ 1. Distribuição -->
+        <TabItem>
+          <ScrollViewer Padding="22,18">
+            <StackPanel>
+              <TextBlock Text="Escolha a distribuição que você vai personalizar." Classes="apagado"
+                         Margin="4,0,0,14"/>
+              <ListBox x:Name="ListaDistros" Classes="distros" Background="Transparent" BorderThickness="0" Padding="0">
+                <ListBox.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel/>
+                  </ItemsPanelTemplate>
+                </ListBox.ItemsPanel>
+                <ListBox.ItemTemplate>
+                  <!--
+                    O cartao E o proprio ListBoxItem: o fundo, a borda e o realce de
+                    selecionado vivem no estilo do item (ver Estilo.axaml). Um Border
+                    proprio aqui dentro cobriria o realce e o item escolhido ficaria
+                    igual aos outros.
+                  -->
+                  <DataTemplate x:DataType="m:OsInfo">
+                    <StackPanel Width="230" Spacing="6">
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <Border Width="10" Height="28" CornerRadius="5"
+                                Background="{Binding Accent}"/>
+                        <TextBlock Text="{Binding Name}" Classes="cartaoTitulo"
+                                   VerticalAlignment="Center"/>
+                      </StackPanel>
+                      <TextBlock Text="{Binding Tagline}" Classes="apagado" Height="46"/>
+                      <TextBlock Text="{Binding AnswerFileName}" FontSize="11" FontFamily="monospace"
+                                 Foreground="{StaticResource TextoApagado}"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- ......................................................... 2. ISO -->
+        <TabItem>
+          <ScrollViewer Padding="22,18">
+            <StackPanel>
+
+              <Border Classes="cartao">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Imagem ISO" Classes="cartaoTitulo"/>
+
+                  <Grid ColumnDefinitions="150,*,Auto" Margin="0,4,0,0">
+                    <TextBlock Grid.Column="0" x:Name="TxtRotuloOrigem" Text="ISO oficial:" Classes="rotulo"/>
+                    <TextBox Grid.Column="1" x:Name="CampoIsoOrigem" Watermark="/caminho/para/ubuntu-24.04.iso"/>
+                    <Button Grid.Column="2" x:Name="BtProcurarOrigem" Content="Procurar..." Margin="10,0,0,0"/>
+                  </Grid>
+
+                  <Grid ColumnDefinitions="150,*,Auto">
+                    <TextBlock Grid.Column="0" Text="Salvar ISO como:" Classes="rotulo"/>
+                    <TextBox Grid.Column="1" x:Name="CampoIsoSaida" Watermark="/caminho/para/ubuntu-personalizado.iso"/>
+                    <Button Grid.Column="2" x:Name="BtProcurarSaida" Content="Procurar..." Margin="10,0,0,0"/>
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="cartao">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Como entregar a personalização" Classes="cartaoTitulo"/>
+                  <RadioButton x:Name="OpRepack" GroupName="entrega" IsChecked="True"
+                               Content="Reempacotar a ISO oficial — uma ISO só, dá boot e instala sozinha"/>
+                  <RadioButton x:Name="OpSeed" GroupName="entrega"
+                               Content="Gerar uma ISO seed separada — a ISO oficial fica intacta"/>
+                  <TextBlock x:Name="TxtEntrega" Classes="apagado"/>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="cartao">
+                <StackPanel Spacing="12">
+                  <TextBlock Text="Disco de destino" Classes="cartaoTitulo"/>
+                  <Grid ColumnDefinitions="150,*">
+                    <TextBlock Grid.Column="0" Text="Particionamento:" Classes="rotulo"/>
+                    <ComboBox Grid.Column="1" x:Name="ComboDisco">
+                      <ComboBoxItem Content="Disco inteiro, partições simples (ESP + raiz ext4)"/>
+                      <ComboBoxItem Content="Disco inteiro com LVM"/>
+                      <ComboBoxItem Content="Disco inteiro com LVM sobre LUKS (criptografado)"/>
+                    </ComboBox>
+                  </Grid>
+                  <Grid ColumnDefinitions="150,*" x:Name="LinhaLuks" IsVisible="False">
+                    <TextBlock Grid.Column="0" Text="Senha do LUKS:" Classes="rotulo"/>
+                    <TextBox Grid.Column="1" x:Name="CampoLuks" PasswordChar="●"/>
+                  </Grid>
+                  <Grid ColumnDefinitions="150,*">
+                    <TextBlock Grid.Column="0" Text="Dispositivo:" Classes="rotulo"/>
+                    <TextBox Grid.Column="1" x:Name="CampoDisco"
+                             Watermark="vazio = primeiro disco fixo (ex.: /dev/sda, /dev/nvme0n1)"/>
+                  </Grid>
+                  <Border Classes="aviso">
+                    <TextBlock Text="⚠ Apaga o disco de destino. A instalação desassistida não pergunta nada: ela particiona e instala. Teste numa VM antes de usar em máquina de produção."/>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- ........................................... 3. Sistema e usuário -->
+        <TabItem>
+          <ScrollViewer Padding="22,18">
+            <Grid ColumnDefinitions="*,14,*">
+
+              <StackPanel Grid.Column="0">
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Usuário" Classes="cartaoTitulo"/>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Nome de login:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoUsuario" Watermark="suporte"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Nome completo:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoNomeCompleto" Watermark="Suporte de TI"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Senha:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoSenha" PasswordChar="●"/>
+                    </Grid>
+                    <CheckBox x:Name="ChkSenhaVisivel" Content="Mostrar a senha"/>
+                    <CheckBox x:Name="ChkAutoLogin" Content="Entrar automaticamente no primeiro boot"/>
+                    <CheckBox x:Name="ChkSemSenhaRoot" IsChecked="True"
+                              Content="Deixar a conta root sem senha (administração só por sudo)"/>
+                    <TextBlock Classes="apagado"
+                               Text="A senha vai para dentro da imagem como hash SHA-512 — não em texto puro, mas ainda assim quebrável com força bruta. Trate a ISO como material sensível."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Nome da máquina" Classes="cartaoTitulo"/>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Hostname:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoHostname" Watermark="ex.: matriz-01"/>
+                    </Grid>
+                    <TextBlock Classes="apagado"
+                               Text="Deixe em branco para o instalador usar o padrão da distribuição."/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Grid.Column="2">
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Região e teclado" Classes="cartaoTitulo"/>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Fuso horário:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoFuso" Text="America/Sao_Paulo"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Idioma:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoLocale" Text="pt_BR.UTF-8"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Teclado:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoTeclado" Text="br"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="120,*">
+                      <TextBlock Grid.Column="0" Text="Variante:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoVariante" Text="abnt2"/>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Acesso remoto" Classes="cartaoTitulo"/>
+                    <CheckBox x:Name="ChkSsh" Content="Instalar o servidor OpenSSH"/>
+                    <TextBlock Text="Chave pública autorizada (opcional):" Classes="rotulo"/>
+                    <TextBox x:Name="CampoChaveSsh" AcceptsReturn="True" Height="70"
+                             TextWrapping="Wrap" Watermark="ssh-ed25519 AAAA..."/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+            </Grid>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- ................................................. 4. Aplicativos -->
+        <TabItem>
+          <ScrollViewer Padding="22,18">
+            <StackPanel>
+              <Border Classes="cartao">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="Programas instalados no primeiro boot" Classes="cartaoTitulo"/>
+                  <TextBlock Classes="apagado"
+                             Text="Os mesmos programas do catálogo do Windows, traduzidos para os pacotes da distribuição escolhida. Onde o programa não existe para Linux, o IsoForge instala o equivalente e diz qual foi."/>
+                  <ItemsControl x:Name="ListaApps" Margin="0,6,0,0">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel/>
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <Border Classes="cartao">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="Pacotes extras" Classes="cartaoTitulo"/>
+                  <TextBox x:Name="CampoPacotes" Watermark="separados por espaço — ex.: htop vim git curl"/>
+                  <CheckBox x:Name="ChkFlatpak" Content="Habilitar Flatpak e o repositório Flathub"/>
+                  <CheckBox x:Name="ChkAtualizar" IsChecked="True"
+                            Content="Atualizar os pacotes durante a instalação"/>
+                  <CheckBox x:Name="ChkMinima" Content="Instalação mínima (menos aplicativos de fábrica)"/>
+                  <CheckBox x:Name="ChkProprietarios"
+                            Content="Instalar drivers proprietários (NVIDIA, firmware) e codecs"/>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </TabItem>
+
+        <!-- .............................................. 5. Personalização -->
+        <TabItem>
+          <ScrollViewer Padding="22,18">
+            <Grid ColumnDefinitions="*,14,*">
+
+              <StackPanel Grid.Column="0">
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Aparência" Classes="cartaoTitulo"/>
+                    <Grid ColumnDefinitions="130,*,Auto">
+                      <TextBlock Grid.Column="0" Text="Papel de parede:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoPapel"/>
+                      <Button Grid.Column="2" x:Name="BtPapel" Content="..." Margin="8,0,0,0"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="130,*,Auto">
+                      <TextBlock Grid.Column="0" Text="Tela de bloqueio:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoBloqueio"/>
+                      <Button Grid.Column="2" x:Name="BtBloqueio" Content="..." Margin="8,0,0,0"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="130,*">
+                      <TextBlock Grid.Column="0" Text="Ambiente gráfico:" Classes="rotulo"/>
+                      <ComboBox Grid.Column="1" x:Name="ComboDesktop">
+                        <ComboBoxItem Content="Padrão da ISO escolhida"/>
+                        <ComboBoxItem Content="GNOME"/>
+                        <ComboBoxItem Content="KDE Plasma"/>
+                        <ComboBoxItem Content="Xfce"/>
+                        <ComboBoxItem Content="Sem interface gráfica (servidor)"/>
+                      </ComboBox>
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Script pós-instalação" Classes="cartaoTitulo"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBox Grid.Column="0" x:Name="CampoScript" Watermark="um .sh seu, executado como root no fim"/>
+                      <Button Grid.Column="1" x:Name="BtScript" Content="..." Margin="8,0,0,0"/>
+                    </Grid>
+                    <TextBlock Classes="apagado"
+                               Text="O arquivo entra na imagem e roda como root depois de tudo. Ele é convertido para fim de linha LF automaticamente."/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+              <StackPanel Grid.Column="2">
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Otimização" Classes="cartaoTitulo"/>
+                    <CheckBox x:Name="ChkJogos" Content="Remover os jogos e utilitários de fábrica"/>
+                    <CheckBox x:Name="ChkTelemetria"
+                              Content="Desativar a coleta de dados e os relatórios de erro"/>
+                    <TextBlock Classes="apagado" Margin="26,-6,0,0"
+                               Text="Desliga o apport e o whoopsie (relatório de falhas do Ubuntu), o ubuntu-report (estatística de instalação) e o popularity-contest (que informa quais pacotes você usa). Nada disso afeta atualizações de segurança."/>
+                    <CheckBox x:Name="ChkSnap" Content="Remover o snapd e preferir pacotes nativos"/>
+                    <CheckBox x:Name="ChkMotd" Content="Desativar as mensagens promocionais do terminal (MOTD)"/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="cartao">
+                  <StackPanel Spacing="12">
+                    <TextBlock Text="Rede sem fio" Classes="cartaoTitulo"/>
+                    <CheckBox x:Name="ChkWifi" Content="Conectar a uma rede Wi-Fi no primeiro boot"/>
+                    <Grid ColumnDefinitions="90,*">
+                      <TextBlock Grid.Column="0" Text="Nome (SSID):" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoSsid"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="90,*">
+                      <TextBlock Grid.Column="0" Text="Senha:" Classes="rotulo"/>
+                      <TextBox Grid.Column="1" x:Name="CampoSenhaWifi" PasswordChar="●"/>
+                    </Grid>
+                    <TextBlock Classes="apagado"
+                               Text="A senha do Wi-Fi fica dentro da imagem. Quem tem o arquivo tem a senha."/>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="cartao">
+                  <StackPanel Spacing="10">
+                    <TextBlock Text="Relatório" Classes="cartaoTitulo"/>
+                    <CheckBox x:Name="ChkRelatorio" IsChecked="True"
+                              Content="Gerar um relatório da imagem ao lado da ISO"/>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+
+            </Grid>
+          </ScrollViewer>
+        </TabItem>
+
+      </TabControl>
+
+      <!-- barra de ações -->
+      <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Destaque}"
+              BorderThickness="0,2,0,0" Padding="22,14">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+            <Button x:Name="BtGerar" Classes="primario" Content="Gerar ISO personalizada"/>
+            <Button x:Name="BtArquivos" Content="Somente gerar arquivos"/>
+            <Button x:Name="BtPendrive" Content="Gravar em pendrive"/>
+            <Button x:Name="BtCancelar" Content="Cancelar" IsEnabled="False" Classes="perigo"/>
+          </StackPanel>
+          <ProgressBar Grid.Column="2" x:Name="Barra" Width="200" Height="6" Minimum="0" Maximum="100"
+                       VerticalAlignment="Center" IsVisible="False"/>
+        </Grid>
+      </Border>
+
+      <!-- log -->
+      <Border Grid.Row="3" Background="{StaticResource FundoSutil}"
+              BorderBrush="{StaticResource BordaCartao}" BorderThickness="0,1,0,0"
+              Padding="22,12" Height="190">
+        <Grid RowDefinitions="Auto,*">
+          <TextBlock Grid.Row="0" Text="ATIVIDADE" FontSize="11" FontWeight="SemiBold"
+                     Foreground="{StaticResource TextoApagado}" Margin="0,0,0,8"/>
+          <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BordaCartao}"
+                  BorderThickness="1" CornerRadius="8">
+            <ScrollViewer x:Name="RolagemLog" Padding="12,8">
+              <SelectableTextBlock x:Name="Log" FontFamily="monospace" FontSize="12"
+                                   TextWrapping="Wrap" Foreground="{StaticResource TextoSecundario}"/>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </Border>
+
+    </Grid>
+  </Grid>
+</Window>

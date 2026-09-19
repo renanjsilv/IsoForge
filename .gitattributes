@@ -1,0 +1,4 @@
+# Scripts de shell e arquivos de atalho do Linux precisam de LF SEMPRE: um CRLF
+# num .sh vira "/usr/bin/env bash\r: arquivo ou diretório não encontrado".
+*.sh text eol=lf
+*.desktop text eol=lf
