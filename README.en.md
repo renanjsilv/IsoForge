@@ -198,13 +198,19 @@ of Windows — without touching your machine.
 With offline Office the test runs **with networking disabled**, on purpose: an offline test
 with internet available would pass even with a broken local payload.
 
+Sandbox is a Windows feature: the Linux build has no such button. To try a distribution ISO,
+boot it in a virtual machine of your own (GNOME Boxes, virt-manager, QEMU) — and do that
+before writing a stick that will wipe a real machine.
+
 ### Writing a USB stick
 
-**Gravar em pendrive** prepares the media directly, with no `.iso` in between: GPT + FAT32,
-UEFI boot, and `install.wim` split into `.swm` when it exceeds FAT32's 4 GiB limit.
+On Windows, **Gravar em pendrive** prepares the media directly, with no `.iso` in between:
+GPT + FAT32, UEFI boot, and `install.wim` split into `.swm` when it exceeds FAT32's 4 GiB
+limit. On Linux it is a `dd` of the image onto the device, which is how distribution ISOs
+are meant to be written.
 
-Only removable disks are listed. The system disk never is, and the chosen disk is
-re-checked at the moment of writing — the screen's copy doesn't count.
+Either way: only removable disks are listed, the system disk never is, and the chosen disk
+is re-checked at the moment of writing — the screen's copy doesn't count.
 
 ---
 

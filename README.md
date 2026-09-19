@@ -193,14 +193,19 @@ acontecer antes de apagar o disco de alguém.
 Com o Office offline, o teste roda **sem rede**, de propósito: um teste offline com
 internet disponível passaria mesmo com o pacote local quebrado.
 
+O Sandbox é do Windows: a versão Linux não tem esse botão. Para testar uma ISO de
+distribuição, dê boot nela numa máquina virtual sua (GNOME Boxes, virt-manager, QEMU) —
+e faça isso antes de gravar num pendrive que vai formatar uma máquina de verdade.
+
 ### Gravar em pendrive
 
-O botão **Gravar em pendrive** prepara a mídia direto, sem passar por arquivo `.iso`:
-GPT + FAT32, arranque por UEFI, e o `install.wim` é partido em `.swm` quando passa do
-limite de 4 GiB do FAT32.
+No Windows, o botão **Gravar em pendrive** prepara a mídia direto, sem passar por arquivo
+`.iso`: GPT + FAT32, arranque por UEFI, e o `install.wim` é partido em `.swm` quando passa
+do limite de 4 GiB do FAT32. No Linux é um `dd` da imagem no dispositivo, que é como as
+ISOs das distribuições são feitas para serem gravadas.
 
-Só aparecem discos removíveis na lista. O disco do sistema nunca é listado, e o disco
-escolhido é reconferido no instante da gravação — não vale o que a tela tinha em mãos.
+Nos dois: só aparecem discos removíveis na lista, o disco do sistema nunca é listado, e o
+disco escolhido é reconferido no instante da gravação — não vale o que a tela tinha em mãos.
 
 ---
 

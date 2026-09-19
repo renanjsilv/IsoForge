@@ -50,3 +50,13 @@ jobs:
         run: |
           dotnet publish linux/IsoForge.Linux.csproj -c Release -r linux-x64 --nologo -p:Version=0.0.0
           ./linux/bin/Release/net8.0/linux-x64/publish/isoforge --versao
+
+      # O mesmo empacotamento que a publicação usa. Roda aqui também porque um erro
+      # nele só apareceria na hora de lançar uma versão, com a tag já empurrada.
+      - name: Os pacotes montam
+        run: |
+          dotnet publish linux/IsoForge.Linux.csproj -c Release -r linux-arm64 --nologo -p:Version=0.0.0
+          bash linux/empacotamento/empacotar.sh 0.0.0
+          dpkg-deb --info dist/IsoForge-0.0.0-amd64.deb
+          dpkg-deb --contents dist/IsoForge-0.0.0-amd64.deb
+          tar -tzf dist/IsoForge-0.0.0-linux-x64.tar.gz
