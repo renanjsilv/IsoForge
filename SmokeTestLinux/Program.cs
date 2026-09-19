@@ -117,9 +117,14 @@ foreach (var info in OsCatalog.All.Where(o => o.IsLinux))
 
         Check(conteudo.Length > 0, $"{info.Name}: gera {info.AnswerFileName}");
         Check(!conteudo.Contains('\r'), $"{info.Name}: sem CRLF (quebraria a execução no Linux)");
-        Check(conteudo.Contains("suporte"), $"{info.Name}: o usuário entrou no arquivo");
-        Check(!conteudo.Contains("Senha#Forte123"),
-            $"{info.Name}: a senha NÃO aparece em texto puro (vai como hash)");
+
+        // O usuário não mora sempre no arquivo principal: no Arch o archinstall separa a conta
+        // num user_credentials.json ao lado do perfil. O que importa é que ele esteja em algum
+        // dos arquivos gerados — e que a senha não esteja em NENHUM deles.
+        Check(arquivos.Any(a => a.Content.Contains("suporte")),
+            $"{info.Name}: o usuário entrou nos arquivos gerados");
+        Check(arquivos.All(a => !a.Content.Contains("Senha#Forte123")),
+            $"{info.Name}: a senha NÃO aparece em texto puro em arquivo nenhum (vai como hash)");
     }
     catch (Exception ex)
     {

@@ -42,8 +42,14 @@ public static class Pendrive
     public static async Task<IReadOnlyList<DiscoRemovivel>> ListarAsync(CancellationToken ct)
     {
         var lsblk = Plataforma.NoCaminho("lsblk") ?? "/usr/bin/lsblk";
+
+        // MOUNTPOINTS (plural) só existe do util-linux 2.33 em diante. Em distribuição mais
+        // antiga o lsblk recusa a coluna inteira e não lista nada; aí vale o MOUNTPOINT antigo.
         var (codigo, saida) = await IsoTools.TryRunCapturedAsync(
             lsblk, "--json --bytes --output NAME,SIZE,MODEL,TRAN,RM,TYPE,MOUNTPOINTS,PATH", ct);
+        if (codigo != 0)
+            (codigo, saida) = await IsoTools.TryRunCapturedAsync(
+                lsblk, "--json --bytes --output NAME,SIZE,MODEL,TRAN,RM,TYPE,MOUNTPOINT,PATH", ct);
         if (codigo != 0)
             throw new InvalidOperationException($"Não consegui listar os discos (lsblk): {saida.Trim()}");
 
@@ -90,6 +96,10 @@ public static class Pendrive
             foreach (var x in m.EnumerateArray())
                 if (x.ValueKind == JsonValueKind.String) yield return x.GetString() ?? "";
 
+        // Forma antiga: uma string só, em vez da lista.
+        if (disco.TryGetProperty("mountpoint", out var mp) && mp.ValueKind == JsonValueKind.String)
+            yield return mp.GetString() ?? "";
+
         if (!disco.TryGetProperty("children", out var filhos) || filhos.ValueKind != JsonValueKind.Array)
             yield break;
 
@@ -120,9 +130,16 @@ public static class Pendrive
         catch { return ""; }
     }
 
-    /// <summary>O comando exato que a gravação executa — mostrado ao usuário antes de rodar.</summary>
+    /// <summary>
+    /// O comando exato que a gravação executa — mostrado antes de rodar e repetido na mensagem
+    /// de erro quando não há pkexec, para quem quiser rodar no terminal. Os caminhos saem
+    /// citados de verdade: uma aspa simples no nome do arquivo tornaria a linha colada no
+    /// terminal outra coisa.
+    /// </summary>
     public static string Comando(string iso, string dispositivo) =>
-        $"dd if='{iso}' of='{dispositivo}' bs=4M oflag=direct conv=fsync status=progress";
+        $"dd if={Citar(iso)} of={Citar(dispositivo)} bs=4M oflag=direct conv=fsync status=progress";
+
+    static string Citar(string valor) => "'" + valor.Replace("'", "'\\''") + "'";
 
     /// <summary>
     /// Grava a ISO no dispositivo. Apaga tudo que estiver lá.
