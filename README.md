@@ -23,7 +23,9 @@ configura VPN e aparência, nomeia a máquina pela unidade e reinicia pronta par
 
 Foi escrito para quem formata muitas máquinas e precisa que todas saiam iguais.
 
-![Escolha do sistema](docs/01-escolha-do-sistema.png)
+<div align="center">
+<img src="docs/00-abertura.gif" width="720" alt="Abertura do IsoForge"/>
+</div>
 
 ---
 
@@ -110,8 +112,6 @@ unidade primeiro, depois o progresso com o ícone de cada programa.
    mexer fica no padrão.
 4. **Gere a ISO** ou **grave direto no pendrive**.
 
-![Aba ISO](docs/02-iso.png)
-
 ### Testar antes de formatar
 
 O botão **Testar (Sandbox)** roda o provisionamento inteiro dentro do Windows Sandbox —
@@ -138,10 +138,12 @@ escolhido é reconferido no instante da gravação — não vale o que a tela ti
 
 | | |
 |:--:|:--:|
-| ![Sistema e usuário](docs/03-sistema-usuario.png) | ![Aplicativos](docs/04-aplicativos.png) |
-| **Sistema e usuário** | **Aplicativos** |
-| ![Drivers](docs/05-drivers.png) | ![Personalização](docs/06-personalizacao.png) |
-| **Drivers** | **Personalização** |
+| ![Escolha do sistema](docs/01-escolha-do-sistema.png) | ![Sistema e usuário](docs/03-sistema-usuario.png) |
+| **Escolha do sistema** | **Sistema e usuário** |
+| ![Aplicativos](docs/04-aplicativos.png) | ![Drivers](docs/05-drivers.png) |
+| **Aplicativos** | **Drivers** |
+| ![Personalização](docs/06-personalizacao.png) | ![Aba ISO](docs/02-iso.png) |
+| **Personalização** | **ISO** |
 
 </div>
 

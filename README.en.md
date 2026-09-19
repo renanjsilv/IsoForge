@@ -23,7 +23,9 @@ VPN and appearance, names the machine after its site, and reboots ready to use.
 
 It was written for people who image a lot of machines and need them all to come out the same.
 
-![System picker](docs/01-escolha-do-sistema.png)
+<div align="center">
+<img src="docs/00-abertura.gif" width="720" alt="IsoForge opening"/>
+</div>
 
 ---
 
@@ -111,7 +113,10 @@ site picker first, then progress with each program's icon.
    stays at its default.
 4. **Build the ISO**, or **write straight to a USB stick**.
 
-![ISO tab](docs/02-iso.png)
+<div align="center">
+<img src="docs/01-escolha-do-sistema.png" width="49%" alt="System picker"/>
+<img src="docs/02-iso.png" width="49%" alt="ISO tab"/>
+</div>
 
 ### Try it before you wipe a disk
 
