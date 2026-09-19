@@ -40,16 +40,16 @@ None of these need .NET installed.
 
 | File | Who it's for |
 |---|---|
-| **IsoForge-1.0.0-Setup.exe** | Installs on the machine, with shortcuts and an uninstaller. The normal choice. |
-| **IsoForge-1.0.0-portatil.zip** | Installs nothing: extract and run. Handy on a borrowed machine or from a USB stick. |
+| **IsoForge-<versão>-Setup.exe** | Installs on the machine, with shortcuts and an uninstaller. The normal choice. |
+| **IsoForge-<versão>-portatil.zip** | Installs nothing: extract and run. Handy on a borrowed machine or from a USB stick. |
 
 ### Linux
 
 | File | Who it's for |
 |---|---|
-| **IsoForge-1.0.0-amd64.deb** | Debian, Ubuntu, Mint: `sudo apt install ./IsoForge-1.0.0-amd64.deb` |
-| **IsoForge-1.0.0-linux-x64.tar.gz** | Any distribution, 64-bit PC. Extract and run. |
-| **IsoForge-1.0.0-linux-arm64.tar.gz** | Any distribution, 64-bit ARM. |
+| **IsoForge-<versão>-amd64.deb** | Debian, Ubuntu, Mint: `sudo apt install ./IsoForge-*.deb` |
+| **IsoForge-<versão>-linux-x64.tar.gz** | Any distribution, 64-bit PC. Extract and run. |
+| **IsoForge-<versão>-linux-arm64.tar.gz** | Any distribution, 64-bit ARM. |
 
 ➡️ **[Get the latest release](https://github.com/renanjsilv/IsoForge/releases/latest)**
 
