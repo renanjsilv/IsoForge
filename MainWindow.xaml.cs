@@ -57,6 +57,12 @@ public partial class MainWindow : Window
         // escolha decide por cima. Com escolha explícita, os aplicativos precisam ser
         // reconvertidos: senão um perfil salvo no Linux abriria no Windows ainda
         // mostrando "Evince (leitor de PDF)" na lista.
+        // Reaberto como administrador so para gravar o pendrive: a pessoa ja estava no meio
+        // de uma gravacao e quem reabriu a janela foi o programa, nao ela. Perguntar o
+        // sistema de novo — e ainda por cima tocar a abertura — e fazer o trabalho dela
+        // duas vezes por uma decisao que foi nossa.
+        if (App.ModoPendrive) escolhido ??= _config.Os;
+
         var salvo = _config.Os;
         var os = escolhido ?? salvo;
         _config.Os = os;
@@ -82,11 +88,21 @@ public partial class MainWindow : Window
         // instância está fechando para dar lugar a uma elevada: aí as duas escreveriam o
         // mesmo settings.dat ao mesmo tempo, e a gravação não é atômica — um arquivo
         // truncado faria a configuração inteira, senhas inclusive, voltar ao padrão.
-        Closing += (_, __) => { if (App.EntregandoBastao) return; try { CollectConfig(); } catch { } };
+        Closing += (_, __) =>
+        {
+            // Fechar com trabalho em andamento deixava o processo filho vivo: a janela
+            // sumia e o robocopy continuava gravando no pendrive. Cancelar aqui faz o
+            // registro do token matá-lo junto.
+            if (_ocupado) { try { _cts?.Cancel(); } catch { } }
+            if (App.EntregandoBastao) return;
+            try { CollectConfig(); } catch { }
+        };
 
         // Reaberto como administrador vindo da tela de pendrive: retoma de onde parou.
+        // No ContentRendered, e não no Loaded: o diálogo é modal e precisa de uma janela
+        // já pintada embaixo dele, senão nasce sobre um retângulo em branco.
         if (App.ModoPendrive)
-            Loaded += async (_, __) =>
+            ContentRendered += async (_, __) =>
             {
                 try
                 {
@@ -135,8 +151,9 @@ public partial class MainWindow : Window
         if (escolhido == null) ShowPicker(primeira: true);
 
         // A abertura vem por último: ela precisa da tela de baixo já montada para
-        // saber para onde voar.
-        ShowSplash();
+        // saber para onde voar. No modo pendrive ela não toca: a animação existe para
+        // apresentar o programa a quem acabou de abri-lo, e aqui quem abriu fui eu.
+        if (!App.ModoPendrive) ShowSplash();
 
         // Tela baixa: o console vazio custava mais do que informava. Quem decide
         // e o primeiro layout do Shell, nao o Loaded da janela: assim tambem vale
@@ -1127,6 +1144,11 @@ public partial class MainWindow : Window
             RbOfficeOffline.IsChecked = true;
             Caixa.Informar(this, "Office baixado. O modo offline foi ativado.");
         }
+        catch (OperationCanceledException)
+        {
+            AppendLog("Interrompido a pedido. O processo em execucao foi encerrado.");
+            MostrarEstado(Atividade.Parado, "Interrompido");
+        }
         catch (Exception ex)
         {
             AppendLog($"ERRO: {ex.Message}");
@@ -1628,6 +1650,11 @@ public partial class MainWindow : Window
             MostrarEstado(Atividade.Concluido, "Pendrive pronto");
             Caixa.Concluir(this, "Pendrive pronto", $"{alvo.Rotulo} está pronto para instalar.");
         }
+        catch (OperationCanceledException)
+        {
+            AppendLog("Interrompido a pedido. O processo em execucao foi encerrado.");
+            MostrarEstado(Atividade.Parado, "Interrompido");
+        }
         catch (Exception ex)
         {
             AppendLog($"ERRO: {ex.Message}");
@@ -1757,6 +1784,11 @@ public partial class MainWindow : Window
             MostrarEstado(Atividade.Concluido, "Pendrive pronto");
             VarrerConclusao(true);
             Caixa.Informar(this, $"Pendrive pronto para instalar:\n{alvo.Rotulo}");
+        }
+        catch (OperationCanceledException)
+        {
+            AppendLog("Interrompido a pedido. O processo em execucao foi encerrado.");
+            MostrarEstado(Atividade.Parado, "Interrompido");
         }
         catch (Exception ex)
         {
@@ -1926,6 +1958,7 @@ public partial class MainWindow : Window
     void SetBusy(bool busy)
     {
         _ocupado = busy;
+        if (BtnCancelarTarefa != null) BtnCancelarTarefa.IsEnabled = busy;
         BtnBuild.IsEnabled = !busy;
         BtnDryRun.IsEnabled = !busy;
         BtnTestScript.IsEnabled = !busy;
@@ -1956,6 +1989,32 @@ public partial class MainWindow : Window
             PararEtapa();
             if (_atividade == Atividade.Ocupado) MostrarEstado(Atividade.Parado, "Pronto");
         }
+    }
+
+    /// <summary>
+    /// Interrompe a tarefa em andamento — de verdade: o cancelamento chega ao processo
+    /// filho e o mata, junto da árvore dele.
+    ///
+    /// A confirmação não é cerimônia. Parar no meio de uma gravação deixa o pendrive
+    /// inutilizável até ser formatado de novo, e isso precisa estar escrito antes, não
+    /// descoberto depois.
+    /// </summary>
+    void CancelarTarefa_Click(object sender, RoutedEventArgs e)
+    {
+        if (_cts is not { IsCancellationRequested: false } cts) return;
+
+        var r = Caixa.Perguntar(this, "Interromper a tarefa?",
+            "A tarefa em andamento será interrompida agora.\n\n"
+            + "Se for uma gravação em pendrive, a mídia fica pela metade e inutilizável até "
+            + "ser formatada de novo. Se for a geração de uma ISO, o arquivo de saída não "
+            + "chega a ser criado.",
+            rotuloSim: "Interromper", rotuloNao: "Continuar a tarefa");
+        if (r != MessageBoxResult.Yes) return;
+
+        BtnCancelarTarefa.IsEnabled = false;
+        AppendLog("Interrompendo a pedido...");
+        Etapa("Interrompendo");
+        try { cts.Cancel(); } catch { /* já descartado: a tarefa terminou sozinha */ }
     }
 
     // ==================================================================

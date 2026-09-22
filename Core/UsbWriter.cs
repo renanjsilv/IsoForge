@@ -396,6 +396,20 @@ public sealed class UsbWriter
         p.Start();
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
+        // Cancelar precisa MATAR o filho, e a árvore dele.
+        //
+        // WaitForExitAsync(ct) devolve quando o token é cancelado, mas o processo continua
+        // rodando: o robocopy seguiria gravando no pendrive depois de a pessoa mandar
+        // parar, e o dism seguiria escrevendo .swm. Como ninguém mais o observa, ele vira
+        // um processo órfão mexendo num disco que o programa já deu por encerrado.
+        //
+        // entireProcessTree porque o que se lança aqui costuma ter filhos — o powershell
+        // que chama format, o dism que dispara seus próprios auxiliares.
+        using var matar = ct.Register(static estado =>
+        {
+            try { ((Process)estado!).Kill(entireProcessTree: true); } catch { /* já morreu */ }
+        }, p);
+
         await p.WaitForExitAsync(ct);
         return p.ExitCode;
     }

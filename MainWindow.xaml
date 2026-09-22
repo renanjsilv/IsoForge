@@ -1076,6 +1076,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <ProgressBar x:Name="BuildProgress" Height="10" Minimum="0" Maximum="100"/>
                     <!--
@@ -1084,8 +1085,17 @@
                         e o 82% parado foi exatamente a queixa que originou isto.
                     -->
                     <TextBlock x:Name="TxtBuildPct" Grid.Column="1" Margin="12,0,0,0" FontWeight="SemiBold" FontSize="12.5"
-                               Foreground="{DynamicResource OsAccent}"
+                               VerticalAlignment="Center" Foreground="{DynamicResource OsAccent}"
                                Text="{Binding Value, ElementName=BuildProgress, StringFormat={}{0:0}%}"/>
+                    <!--
+                        Ate agora nao havia saida: uma copia de 12 GB para pendrive leva de
+                        cinco a vinte minutos e o unico jeito de parar era fechar a janela —
+                        que deixava o robocopy orfao, seguindo a gravacao sem ninguem olhando.
+                    -->
+                    <Button x:Name="BtnCancelarTarefa" Grid.Column="2" Margin="14,0,0,0"
+                            Style="{StaticResource Secondary}" Padding="12,5" FontSize="12"
+                            Content="Interromper" IsEnabled="False" Click="CancelarTarefa_Click"
+                            AutomationProperties.Name="Interromper a tarefa em andamento"/>
                 </Grid>
             </StackPanel>
             </Border>

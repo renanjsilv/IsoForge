@@ -1624,6 +1624,41 @@ ao\existe" };
               "console: aberto pelo trabalho, volta a fechar depois (senao a tela baixa fica amputada)");
     }
 
+    // ------------------------------------------- retomar onde parou, e poder parar
+    {
+        var (xaml, cs) = FonteDaJanela();
+
+        // Reaberto como administrador, o app subia a abertura E a escolha do sistema por
+        // cima — a tela de gravacao nascia enterrada e a pessoa recomecava do zero.
+        Check(cs.Contains("if (App.ModoPendrive) escolhido ??= _config.Os"),
+              "retomada: no modo pendrive nao se pergunta o sistema de novo");
+        Check(cs.Contains("if (!App.ModoPendrive) ShowSplash()"),
+              "retomada: no modo pendrive a abertura nao toca");
+        Check(cs.Contains("ContentRendered += async") && cs.Contains("App.ModoPendrive"),
+              "retomada: espera a janela PINTADA antes do dialogo modal");
+
+        // Cancelar tem de chegar ao processo filho. WaitForExitAsync(ct) devolve, mas o
+        // robocopy continuaria gravando no pendrive sem ninguem olhando.
+        foreach (var arq in new[] { "Core/UsbWriter.cs", "Core/IsoPipeline.cs", "Core/IsoTools.cs" })
+        {
+            string? fonte = null;
+            for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+            {
+                var tent = Path.Combine(d.FullName, arq.Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(tent)) { fonte = File.ReadAllText(tent); break; }
+            }
+            Check(fonte != null && fonte.Contains("Kill(entireProcessTree: true)"),
+                  $"cancelar: {arq} mata a arvore do processo filho quando o token e cancelado");
+        }
+
+        Check(xaml.Contains("x:Name=\"BtnCancelarTarefa\""),
+              "cancelar: existe um botao para interromper (nao havia nenhum)");
+        Check(cs.Contains("if (_ocupado) { try { _cts?.Cancel(); } catch { } }"),
+              "cancelar: fechar a janela com trabalho em andamento nao deixa processo orfao");
+        Check(cs.Contains("catch (OperationCanceledException)"),
+              "cancelar: interromper de proposito nao e reportado como falha");
+    }
+
     // --------------------------------------------------- a barra nao finge precisao
     {
         var (xaml, cs) = FonteDaJanela();
