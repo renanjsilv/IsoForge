@@ -105,6 +105,7 @@ public class IsoPipeline
         Log($"Pasta de trabalho: {staging}");
         Pct(3);
 
+        var sucesso = false;
         try
         {
             string label;
@@ -130,7 +131,7 @@ public class IsoPipeline
             Pct(70);
 
             await new UsbWriter(Log, Pct).GravarAsync(alvo, staging, label, ct);
-            Pct(100);
+            sucesso = true;
 
             Log("");
             Log($"✔ Pendrive pronto: {alvo.Rotulo}");
@@ -138,8 +139,13 @@ public class IsoPipeline
         }
         finally
         {
-            Log("Limpando pasta de trabalho...");
+            // O 100% ficava ANTES daqui. A limpeza apaga a árvore de trabalho inteira — 5 a
+            // 8 GB, com reset de atributos e várias tentativas — e leva de segundos a
+            // minutos. A pessoa lia "pronto", via 100%, e o programa parava de responder.
+            // Cem por cento é quando não há mais nada a fazer.
+            Log("Limpando os arquivos temporários...");
             ForceDeleteDirectory(staging);
+            if (sucesso) Pct(100);
         }
     }
 
@@ -197,13 +203,21 @@ public class IsoPipeline
     // Limpeza robusta da pasta de trabalho (evita acúmulo de GBs no Temp)
     // ------------------------------------------------------------------
 
-    /// <summary>Remove pastas work_* de gerações anteriores que ficaram presas.</summary>
+    /// <summary>
+    /// Remove pastas de trabalho de gerações anteriores que ficaram presas.
+    ///
+    /// Os DOIS prefixos, e isso não é detalhe: a geração de ISO cria work_*, mas a
+    /// gravação em pendrive cria usb_*. Enquanto só o work_* era varrido, uma gravação
+    /// interrompida deixava de 5 a 8 GB no %TEMP% — para sempre, porque nada mais
+    /// olhava para aquela pasta.
+    /// </summary>
     void CleanStaleWorkFolders(string root)
     {
         try
         {
             if (!Directory.Exists(root)) return;
-            foreach (var d in Directory.EnumerateDirectories(root, "work_*"))
+            foreach (var d in Directory.EnumerateDirectories(root, "work_*")
+                              .Concat(Directory.EnumerateDirectories(root, "usb_*")))
             {
                 Log($"Removendo pasta de trabalho antiga: {Path.GetFileName(d)}");
                 ForceDeleteDirectory(d);

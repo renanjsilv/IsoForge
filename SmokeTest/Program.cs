@@ -1533,6 +1533,113 @@ ao\existe" };
     Check(dAchou != null && dAchou.Contains("SISTEMA"),
           "tela: mesmo achando, explica por que os outros discos nao aparecem");
 
+    // Le o fonte da janela principal a partir da pasta de saida, subindo ate achar.
+    // Afirmar sobre XAML sem WPF e o unico jeito de a suite proteger decisoes de layout.
+    (string xaml, string cs) FonteDaJanela()
+    {
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+        {
+            var x = Path.Combine(d.FullName, "MainWindow.xaml");
+            var c = Path.Combine(d.FullName, "MainWindow.xaml.cs");
+            if (File.Exists(x) && File.Exists(c)) return (File.ReadAllText(x), File.ReadAllText(c));
+        }
+        return ("", "");
+    }
+
+    // -------------------------------------------- nao formatar o que nao vai caber
+    // O pendrive era APAGADO e so depois se descobria que o conteudo nao cabia: a
+    // pessoa esperava vinte minutos para receber um erro, com a midia ja destruida.
+    // Os arquivos grandes sao esparsos — declaram 4,5 GB e ocupam quase nada.
+    {
+        const long QuatroGiB = 4L * 1024 * 1024 * 1024;
+        var raiz = Path.Combine(Path.GetTempPath(), "isoforge-fat32-" + Guid.NewGuid().ToString("N")[..8]);
+
+        string Montar(string nome, long tamanho)
+        {
+            var pasta = Path.Combine(raiz, nome, "sources");
+            Directory.CreateDirectory(pasta);
+            if (tamanho > 0) Esparso.Criar(Path.Combine(pasta, nome.StartsWith("esd") ? "install.esd" : "install.wim"), tamanho);
+            return Path.Combine(raiz, nome);
+        }
+
+        string? Recusa(string origem)
+        {
+            try { UsbWriter.ConferirQueCabeEmFat32(origem); return null; }
+            catch (InvalidOperationException ex) { return ex.Message; }
+        }
+
+        try
+        {
+            // install.wim grande em pasta gravavel: PASSA, porque vai ser partido em .swm.
+            var wimGrande = Montar("wim-grande", QuatroGiB + 1_000_000);
+            Check(Recusa(wimGrande) == null,
+                  "fat32: install.wim grande em pasta gravavel passa (sera partido em .swm)");
+
+            // install.esd grande: RECUSA, porque /Split-Image nao parte .esd.
+            var esdGrande = Montar("esd-grande", QuatroGiB + 1_000_000);
+            var motivoEsd = Recusa(esdGrande);
+            Check(motivoEsd != null && motivoEsd.Contains("esd"),
+                  "fat32: install.esd acima de 4 GiB e recusado ANTES de formatar");
+            Check(motivoEsd != null && motivoEsd.Contains("Nada foi gravado"),
+                  "fat32: a recusa diz que o pendrive nao foi tocado");
+
+            // Outro arquivo grande qualquer: RECUSA, com o nome dele.
+            var outro = Montar("outro-grande", 0);
+            Directory.CreateDirectory(Path.Combine(outro, "payload"));
+            Esparso.Criar(Path.Combine(outro, "payload", "gigante.bin"), QuatroGiB + 1_000_000);
+            var motivoOutro = Recusa(outro);
+            Check(motivoOutro != null && motivoOutro.Contains("gigante.bin"),
+                  "fat32: qualquer arquivo acima de 4 GiB e recusado, e a mensagem diz qual");
+
+            // Tudo pequeno: passa.
+            var pequeno = Montar("pequeno", 1024);
+            Check(Recusa(pequeno) == null, "fat32: conteudo que cabe passa sem reclamar");
+
+            // O teste de escrita precisa responder de verdade, nos dois sentidos.
+            Check(UsbWriter.DaParaEscrever(raiz), "fat32: pasta gravavel e reconhecida como gravavel");
+            Check(!UsbWriter.DaParaEscrever(Path.Combine(raiz, "nao", "existe")),
+                  "fat32: pasta inexistente nao e reconhecida como gravavel");
+        }
+        finally { try { Directory.Delete(raiz, true); } catch { } }
+    }
+
+    // ----------------------------------------------------- o console cabe uma linha
+    // O piso do console era 96 px contra 94 px de moldura: sobravam DOIS pixels e
+    // nenhuma linha de texto. Em tela baixa a pessoa via uma tira vazia e concluia
+    // que o programa nao estava fazendo nada.
+    {
+        var (xaml, cs) = FonteDaJanela();
+
+        Check(xaml.Contains("MinHeight=\"140\"") && xaml.Contains("x:Name=\"LogRow\""),
+              "console: o piso da linha do log e 140 px (96 nao cabia uma linha sequer)");
+        Check(cs.Contains("const int AlturaMinimaLog = 140"),
+              "console: o code-behind usa o MESMO piso do XAML (eles nao podem divergir)");
+        Check(!cs.Contains("LogRow.MinHeight = _logRecolhido ? 0 : 96"),
+              "console: o 96 cravado no code-behind sumiu");
+        Check(xaml.Contains("Padding=\"0\"") && xaml.Contains("x:Name=\"TxtLog\""),
+              "console: TxtLog com Padding 0 (o 9,7 herdado comia 14 px de texto)");
+        Check(cs.Contains("e.NewSize.Height < 700"),
+              "console: o limiar de recolhimento caiu para 700 (880 pegava ate 1920x1080 a 125%)");
+        Check(cs.Contains("_logAbertoPorTrabalho"),
+              "console: aberto pelo trabalho, volta a fechar depois (senao a tela baixa fica amputada)");
+    }
+
+    // --------------------------------------------------- a barra nao finge precisao
+    {
+        var (xaml, cs) = FonteDaJanela();
+
+        Check(cs.Contains("BuildProgress.IsIndeterminate = sim"),
+              "progresso: existe um modo indeterminado (82 a 98 sem medida era um numero parado)");
+        Check(cs.Contains("TxtBuildPct.Visibility = sim ? Visibility.Collapsed"),
+              "progresso: o numero SOME quando a barra fica indeterminada");
+        Check(cs.Contains("if (p > BuildProgress.Value) BuildProgress.Value = p"),
+              "progresso: a barra nunca anda para tras (Progress<T>.Report e assincrono)");
+        Check(cs.Contains("_etapaDesde") && cs.Contains("AtualizarRelogio"),
+              "progresso: ha um relogio de etapa — o tempo decorrido e a unica medida que nao mente");
+        Check(xaml.Contains("<TaskbarItemInfo"),
+              "progresso: a barra de tarefas tambem mostra (e o unico canal com a janela minimizada)");
+    }
+
     // ------------------------------------------------------------------ elevacao
     Check(Elevacao.Citar(@"C:\Uma Pasta\saida.iso") == "\"C:\\Uma Pasta\\saida.iso\"",
           "elevacao: caminho com espaco sai entre aspas");

@@ -132,6 +132,11 @@ public sealed class UsbWriter
             throw new InvalidOperationException(
                 $"O pendrive tem {alvo.Gb:F1} GB e o conteúdo ocupa {necessarioGb:F2} GB. Use um maior.");
 
+        // ANTES de formatar. Tudo que reprova aqui reprovaria mais tarde de qualquer
+        // forma — só que depois de o pendrive ter sido apagado e de a pessoa ter esperado
+        // vinte minutos para receber um erro.
+        ConferirQueCabeEmFat32(origem);
+
         _log($"APAGANDO E FORMATANDO: {alvo.Rotulo}");
         var letra = await PrepararDiscoAsync(alvo, rotulo, necessarioGb, ct);
         _pct?.Invoke(78);
@@ -145,6 +150,81 @@ public sealed class UsbWriter
         _log("Copiando os arquivos para o pendrive...");
         await CopiarAsync(origem, letra + ":\\", ct);
         _pct?.Invoke(98);
+    }
+
+    /// <summary>
+    /// Recusa, ANTES de tocar no pendrive, o que não teria como caber em FAT32.
+    ///
+    /// O FAT32 não guarda arquivo maior que 4 GiB, e a mídia de instalação do Windows
+    /// precisa ser FAT32 para arrancar por UEFI sem ajuda. A saída conhecida é partir o
+    /// <c>install.wim</c> em <c>.swm</c>, que o Setup do Windows lê nativamente — mas ela
+    /// só existe para WIM, e só funciona se der para ESCREVER onde a imagem está.
+    ///
+    /// Sem esta checagem, os dois casos abaixo terminavam igual: disco formatado, split
+    /// pulado ou falhando, e a cópia morrendo no meio depois de muitos minutos. O pendrive
+    /// já estava destruído quando o problema aparecia.
+    /// </summary>
+    internal static void ConferirQueCabeEmFat32(string origem)
+    {
+        const long LimiteFat32 = 4L * 1024 * 1024 * 1024 - 1;
+        var sources = Path.Combine(origem, "sources");
+
+        var wim = Path.Combine(sources, "install.wim");
+        var temWimGrande = File.Exists(wim) && new FileInfo(wim).Length > LimiteFat32;
+
+        // 1. O install.esd não tem como ser partido: o /Split-Image do DISM trabalha com
+        //    WIM. Recusar é melhor que formatar e descobrir na cópia.
+        var esd = Path.Combine(sources, "install.esd");
+        if (File.Exists(esd) && new FileInfo(esd).Length > LimiteFat32)
+            throw new InvalidOperationException(
+                $"Esta imagem traz um install.esd de {new FileInfo(esd).Length / 1024.0 / 1024 / 1024:F2} GB. "
+                + "O FAT32 não guarda arquivo acima de 4 GiB, e um .esd não pode ser partido como "
+                + "um .wim.\n\nGere a ISO pelo IsoForge (que produz install.wim) ou use uma imagem "
+                + "com install.wim. Nada foi gravado no pendrive.");
+
+        // 2. Partir o WIM escreve os .swm ao lado dele e apaga o original. Quando a origem
+        //    é uma ISO montada — o caminho "gerar a ISO e gravar em seguida" —, ela é
+        //    somente leitura e isso não tem como dar certo.
+        if (temWimGrande && !DaParaEscrever(sources))
+            throw new InvalidOperationException(
+                "O install.wim desta imagem passa de 4 GiB e precisa ser partido em .swm para caber "
+                + "em FAT32, mas a origem é somente leitura (uma ISO montada).\n\n"
+                + "Use o botão \"Gravar em pendrive\" da tela principal: ele prepara os arquivos numa "
+                + "pasta de trabalho gravável. Nada foi gravado no pendrive.");
+
+        // 3. Qualquer OUTRO arquivo grande. O install.wim fica de fora porque ele vai ser
+        //    partido logo adiante.
+        try
+        {
+            foreach (var f in new DirectoryInfo(origem).EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                if (f.Length <= LimiteFat32) continue;
+                if (string.Equals(f.FullName, wim, StringComparison.OrdinalIgnoreCase)) continue;
+                throw new InvalidOperationException(
+                    $"O arquivo {f.Name} tem {f.Length / 1024.0 / 1024 / 1024:F2} GB e não cabe em FAT32, "
+                    + "que é o sistema de arquivos exigido para o arranque por UEFI. Nada foi gravado "
+                    + "no pendrive.");
+            }
+        }
+        catch (UnauthorizedAccessException) { /* subárvore inacessível: o robocopy roda elevado */ }
+        catch (IOException) { /* idem */ }
+    }
+
+    /// <summary>
+    /// Dá para criar arquivo nesta pasta? Testado escrevendo de verdade — atributo de
+    /// pasta e permissão herdada mentem, e aqui o custo de errar é um pendrive apagado.
+    /// </summary>
+    internal static bool DaParaEscrever(string pasta)
+    {
+        try
+        {
+            if (!Directory.Exists(pasta)) return false;
+            var teste = Path.Combine(pasta, $".isoforge-{Guid.NewGuid():N}.tmp");
+            using (File.Create(teste)) { }
+            File.Delete(teste);
+            return true;
+        }
+        catch { return false; }
     }
 
     // ------------------------------------------------------------------ passos

@@ -10,6 +10,14 @@
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         Background="{DynamicResource WindowBg}">
+    <!--
+        Progresso no icone da barra de tarefas. Numa gravacao de quinze minutos a
+        janela e minimizada, e este vira o unico canal que sobra: funciona com o
+        console escondido, com a janela minimizada e em qualquer resolucao.
+    -->
+    <Window.TaskbarItemInfo>
+        <TaskbarItemInfo x:Name="Taskbar"/>
+    </Window.TaskbarItemInfo>
     <Grid>
         <!-- Shell = o app. Fica montado desde o inicio, atras da camada de escolha
              do sistema; e por isso que a passagem entre as duas parece uma
@@ -23,11 +31,16 @@
             <RowDefinition Height="68"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <!-- Console proporcional, nao 140px cravados: a 768 de altura os 140
-                 comiam 18% da janela (com o console vazio) e a 1400 continuavam
-                 os mesmos 140. O piso mantem 3 linhas legiveis; o teto evita que
-                 o log roube a tela em monitor grande. -->
-            <RowDefinition x:Name="LogRow" Height="0.18*" MinHeight="96" MaxHeight="190"/>
+            <!-- Console proporcional, nao uma altura cravada: a 768 de altura um valor
+                 fixo comia 18% da janela (com o console vazio) e a 1400 continuava o
+                 mesmo. O teto evita que o log roube a tela em monitor grande.
+
+                 O PISO E 140, NAO 96. A moldura vertical deste painel soma 94 px:
+                 margem do Border 24, borda 2, margem do DockPanel 22, cabecalho 32 e
+                 mais 14 do Padding "9,7" que o TxtLog herda do estilo implicito de
+                 TextBox. Com piso 96 sobravam DOIS pixels para o texto — nenhuma linha.
+                 A tira vazia que aparecia em 1366x768 era isto, nao log vazio. -->
+            <RowDefinition x:Name="LogRow" Height="0.18*" MinHeight="140" MaxHeight="190"/>
         </Grid.RowDefinitions>
 
         <!-- ============ SIDEBAR ============ -->
@@ -1004,9 +1017,13 @@
                             <!-- glifo num TextBlock proprio: o estilo implicito de
                                  TextBlock define FontFamily e venceria a fonte herdada
                                  do botao, virando um quadrado vazio -->
-                            <TextBlock x:Name="GlifoBtnLogShow" FontFamily="Segoe MDL2 Assets"
-                                       FontSize="10" Text="&#xE70E;"
-                                       Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="GlifoBtnLogShow" FontFamily="Segoe MDL2 Assets"
+                                           FontSize="10" VerticalAlignment="Center" Text="&#xE70E;"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                                <TextBlock Text="Atividade" Margin="7,0,0,0" FontSize="12" VerticalAlignment="Center"
+                                           Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                            </StackPanel>
                         </Button>
                     <Border DockPanel.Dock="Right" Background="{DynamicResource ChipBg}" CornerRadius="10" Padding="14,8" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
@@ -1061,7 +1078,13 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <ProgressBar x:Name="BuildProgress" Height="10" Minimum="0" Maximum="100"/>
-                    <TextBlock Grid.Column="1" Margin="12,0,0,0" FontWeight="SemiBold" FontSize="12.5" Foreground="{DynamicResource OsAccent}"
+                    <!--
+                        O numero desaparece quando a barra fica indeterminada. Um "82%"
+                        parado ao lado de uma barra pulsando e a tela se contradizendo —
+                        e o 82% parado foi exatamente a queixa que originou isto.
+                    -->
+                    <TextBlock x:Name="TxtBuildPct" Grid.Column="1" Margin="12,0,0,0" FontWeight="SemiBold" FontSize="12.5"
+                               Foreground="{DynamicResource OsAccent}"
                                Text="{Binding Value, ElementName=BuildProgress, StringFormat={}{0:0}%}"/>
                 </Grid>
             </StackPanel>
@@ -1106,9 +1129,12 @@
                     <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource Ok}" VerticalAlignment="Center" Margin="0,0,7,0"/>
                     <TextBlock Text="ATIVIDADE" Style="{StaticResource LabelText}" LineHeight="10" VerticalAlignment="Center"/>
                 </DockPanel>
+                <!-- Padding=0 de proposito: o estilo implicito de TextBox aplica "9,7",
+                     e esses 14 px verticais eram a diferenca entre caber uma linha e
+                     nao caber nenhuma. -->
                 <TextBox x:Name="TxtLog" IsReadOnly="True" FontFamily="Cascadia Mono, Consolas" FontSize="12"
                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                         TextWrapping="NoWrap" Background="Transparent"
+                         TextWrapping="NoWrap" Background="Transparent" Padding="0"
                          Foreground="{DynamicResource TextSecondary}" BorderThickness="0"/>
             </DockPanel>
         </Border>

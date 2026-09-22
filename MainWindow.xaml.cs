@@ -141,12 +141,16 @@ public partial class MainWindow : Window
         // Tela baixa: o console vazio custava mais do que informava. Quem decide
         // e o primeiro layout do Shell, nao o Loaded da janela: assim tambem vale
         // fora de uma janela exibida (render offscreen dos testes de layout).
-        // 880 e a altura util de uma janela de ~900 depois da barra de titulo.
+        // O limiar era 880, calibrado para "janela de 900 menos a barra de titulo" e nao
+        // para tela de verdade: ele pegava 1366x768, 1600x900, 1440x900 e ate 1920x1080
+        // a 125% de escala (1536x864 logicos), que e o padrao recomendado em notebook
+        // FHD. Em 768 sobram ~689 px uteis; com 140 para o console restam ~549 para o
+        // formulario, que rola.
         SizeChangedEventHandler? primeiroLayout = null;
         primeiroLayout = (_, e) =>
         {
             Shell.SizeChanged -= primeiroLayout;
-            if (e.NewSize.Height < 880) SetLogCollapsed(true);
+            if (e.NewSize.Height < 700) SetLogCollapsed(true);
         };
         Shell.SizeChanged += primeiroLayout;
 
@@ -1604,12 +1608,21 @@ public partial class MainWindow : Window
         SetBusy(true);
         _cts = new CancellationTokenSource();
         var progress = new Progress<string>(AppendLog);
-        var percent = new Progress<int>(p => Dispatcher.Invoke(() => BuildProgress.Value = p));
+        // O marco vira nome de etapa: os numeros do gravador sao pontos (78 formatado,
+        // 82 WIM partido, 98 copia feita), nao medida continua. Quem informa e o texto.
+        // O clamp existe porque Progress<T>.Report e assincrono: um tique atrasado pode
+        // chegar depois do marco seguinte e fazer a barra andar para tras.
+        var percent = new Progress<int>(p => Dispatcher.Invoke(() =>
+        {
+            if (p > BuildProgress.Value) BuildProgress.Value = p;
+            EtapaDoPendrive(p);
+        }));
         BuildProgress.Value = 0;
         BuildProgressPanel.Visibility = Visibility.Visible;
         try
         {
             AppendLog($"==== Gravando a ISO em {alvo.Rotulo} ====");
+            Etapa($"Preparando os arquivos — {alvo.Nome}");
             await Task.Run(() => new IsoPipeline(progress, percent)
                 .GravarIsoEmPendriveAsync(isoPath, alvo, _cts.Token));
             MostrarEstado(Atividade.Concluido, "Pendrive pronto");
@@ -1725,12 +1738,21 @@ public partial class MainWindow : Window
         SetBusy(true);
         _cts = new CancellationTokenSource();
         var progress = new Progress<string>(AppendLog);
-        var percent = new Progress<int>(p => Dispatcher.Invoke(() => BuildProgress.Value = p));
+        // O marco vira nome de etapa: os numeros do gravador sao pontos (78 formatado,
+        // 82 WIM partido, 98 copia feita), nao medida continua. Quem informa e o texto.
+        // O clamp existe porque Progress<T>.Report e assincrono: um tique atrasado pode
+        // chegar depois do marco seguinte e fazer a barra andar para tras.
+        var percent = new Progress<int>(p => Dispatcher.Invoke(() =>
+        {
+            if (p > BuildProgress.Value) BuildProgress.Value = p;
+            EtapaDoPendrive(p);
+        }));
         BuildProgress.Value = 0;
         BuildProgressPanel.Visibility = Visibility.Visible;
         try
         {
             AppendLog($"==== Gravando no pendrive: {alvo.Rotulo} ====");
+            Etapa($"Preparando os arquivos — {alvo.Nome}");
             await Task.Run(() => new IsoPipeline(progress, percent).BuildToUsbAsync(cfg, alvo, _cts.Token));
             MostrarEstado(Atividade.Concluido, "Pendrive pronto");
             VarrerConclusao(true);
@@ -1755,7 +1777,13 @@ public partial class MainWindow : Window
         SetBusy(true);
         _cts = new CancellationTokenSource();
         var progress = new Progress<string>(AppendLog);
-        var percent = new Progress<int>(p => Dispatcher.Invoke(() => BuildProgress.Value = p));
+        var percent = new Progress<int>(p => Dispatcher.Invoke(() =>
+        {
+            // Nunca para tras: Progress<T>.Report e assincrono e um tique atrasado pode
+            // chegar depois do proximo marco.
+            if (p > BuildProgress.Value) BuildProgress.Value = p;
+            try { Taskbar.ProgressValue = p / 100.0; } catch { }
+        }));
         BuildProgress.Value = 0;
         BuildProgressPanel.Visibility = Visibility.Visible;
         try
@@ -1907,8 +1935,121 @@ public partial class MainWindow : Window
 
         // O indicador so volta a "parado" se nao estamos exibindo um resultado:
         // um "ISO gerada" que dura meio segundo nao informa ninguem.
-        if (busy) MostrarEstado(Atividade.Ocupado, TxtHeaderStatus.Text);
-        else if (_atividade == Atividade.Ocupado) MostrarEstado(Atividade.Parado, "Pronto");
+        //
+        // E, ao ficar ocupado, o texto NAO e herdado: reaproveitar o anterior deixava o
+        // cabecalho dizendo "Pronto" durante uma gravacao de quinze minutos — a tela
+        // mentindo exatamente no momento em que a pessoa mais olha para ela.
+        if (busy)
+        {
+            var texto = _atividade == Atividade.Ocupado ? TxtHeaderStatus.Text : "Trabalhando...";
+            MostrarEstado(Atividade.Ocupado, texto);
+            // O console e o unico lugar onde o andamento aparece. Se ele estiver recolhido
+            // — e em tela baixa ele se recolhe sozinho ao abrir —, a pessoa fica sem canal
+            // nenhum e conclui que travou. Enquanto ha trabalho, ele abre.
+            if (_logRecolhido) { _logAbertoPorTrabalho = true; SetLogCollapsed(false); }
+        }
+        else
+        {
+            // E devolve o espaco depois. Sem isto, a tela de 768 ficaria amputada para
+            // sempre depois da primeira gravacao.
+            if (_logAbertoPorTrabalho) { _logAbertoPorTrabalho = false; SetLogCollapsed(true); }
+            PararEtapa();
+            if (_atividade == Atividade.Ocupado) MostrarEstado(Atividade.Parado, "Pronto");
+        }
+    }
+
+    // ==================================================================
+    // Relógio de etapa
+    //
+    // A queixa que originou isto: a barra parou em 82% e a pessoa achou que o programa
+    // tinha travado. Não tinha — estava copiando 12 GB para um pendrive, um passo que
+    // leva de 5 a 20 minutos e que ia de 82 a 98 sem dizer nada.
+    //
+    // A saída NÃO é uma porcentagem melhor. A faixa tem 16 pontos: mesmo uma medida
+    // perfeita mudaria o número uma vez por minuto, o que continua lendo como travado.
+    // Pior, medir o espaço ocupado no destino mentiria — o FAT32 aloca a cadeia inteira
+    // de um arquivo de 3,8 GB de uma vez, a barra saltaria e congelaria de novo, só que
+    // em 96%.
+    //
+    // O que não mente é o tempo decorrido. Então a barra fica indeterminada (pulsando,
+    // que é honesto: "estou trabalhando, não sei quanto falta"), o número some da tela, e
+    // o cabeçalho diz o nome da etapa e há quanto tempo ela está rodando.
+    // ==================================================================
+
+    readonly System.Windows.Threading.DispatcherTimer _relogioEtapa = new()
+    {
+        Interval = TimeSpan.FromSeconds(1)
+    };
+    string _etapaTexto = "";
+    DateTime _etapaDesde;
+
+    /// <summary>Começa uma etapa: nome no cabeçalho, relógio correndo, barra pulsando.</summary>
+    void Etapa(string texto)
+    {
+        _etapaTexto = texto;
+        _etapaDesde = DateTime.Now;
+        Indeterminado(true);
+        AppendLog($"— {texto}");
+        AtualizarRelogio();
+
+        if (!_relogioEtapa.IsEnabled)
+        {
+            _relogioEtapa.Tick -= RelogioTick;
+            _relogioEtapa.Tick += RelogioTick;
+            _relogioEtapa.Start();
+        }
+    }
+
+    void RelogioTick(object? s, EventArgs e) => AtualizarRelogio();
+
+    void AtualizarRelogio()
+    {
+        if (string.IsNullOrEmpty(_etapaTexto)) return;
+        var d = DateTime.Now - _etapaDesde;
+        var tempo = d.TotalHours >= 1 ? d.ToString(@"h\:mm\:ss") : d.ToString(@"mm\:ss");
+        MostrarEstado(Atividade.Ocupado, $"{_etapaTexto} · {tempo}");
+    }
+
+    void PararEtapa()
+    {
+        _relogioEtapa.Stop();
+        _etapaTexto = "";
+        Indeterminado(false);
+        try { Taskbar.ProgressState = System.Windows.Shell.TaskbarItemProgressState.None; } catch { }
+    }
+
+    /// <summary>
+    /// Barra pulsando em vez de número. O número sai de cena junto: uma barra
+    /// indeterminada ao lado de um "82%" parado é a tela se contradizendo.
+    /// </summary>
+    void Indeterminado(bool sim)
+    {
+        BuildProgress.IsIndeterminate = sim;
+        TxtBuildPct.Visibility = sim ? Visibility.Collapsed : Visibility.Visible;
+        try
+        {
+            Taskbar.ProgressState = sim
+                ? System.Windows.Shell.TaskbarItemProgressState.Indeterminate
+                : System.Windows.Shell.TaskbarItemProgressState.Normal;
+        }
+        catch { /* a barra de tarefas é conforto: nunca derrubar o trabalho por ela */ }
+    }
+
+    /// <summary>
+    /// Traduz o percentual que o gravador reporta no nome da etapa que começou.
+    ///
+    /// Os números do UsbWriter são marcos, não medida contínua: 78 é o disco formatado,
+    /// 82 é o WIM partido, 98 é a cópia terminada. Cada um deles marca o INÍCIO do passo
+    /// seguinte — que é justamente o que a pessoa precisa saber.
+    /// </summary>
+    void EtapaDoPendrive(int marco)
+    {
+        switch (marco)
+        {
+            case 78: Etapa("Partindo o install.wim (não cabe em FAT32)"); break;
+            case 82: Etapa("Copiando os arquivos para o pendrive"); break;
+            case 98: Etapa("Finalizando e limpando os arquivos temporários"); break;
+        }
     }
 
     /// <summary>
@@ -1929,11 +2070,24 @@ public partial class MainWindow : Window
 
         LogPanel.Visibility = _logRecolhido ? Visibility.Collapsed : Visibility.Visible;
         BtnLogShow.Visibility = _logRecolhido ? Visibility.Visible : Visibility.Collapsed;
-        LogRow.MinHeight = _logRecolhido ? 0 : 96;
+        LogRow.MinHeight = _logRecolhido ? 0 : AlturaMinimaLog;
         LogRow.Height = _logRecolhido ? new GridLength(0) : new GridLength(0.18, GridUnitType.Star);
     }
 
     bool _logRecolhido;
+
+    /// <summary>
+    /// Piso do console, em pixels. Precisa casar com o MinHeight de LogRow no XAML.
+    ///
+    /// Eram 96, e 96 nao cabia UMA linha: a moldura vertical do painel soma 94 px
+    /// (margem 24 + borda 2 + margem interna 22 + cabecalho 32 + 14 do Padding que o
+    /// TxtLog herdava do estilo de TextBox). Sobravam dois pixels. A tira vazia que
+    /// aparecia em tela baixa era isto, e nao log vazio.
+    /// </summary>
+    const int AlturaMinimaLog = 140;
+
+    /// <summary>O console foi aberto pelo trabalho, e não pela pessoa — então volta a fechar.</summary>
+    bool _logAbertoPorTrabalho;
 
     /// <summary>
     /// O log da aplicação: na tela E em arquivo.

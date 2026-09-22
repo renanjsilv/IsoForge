@@ -268,8 +268,18 @@ public static class UsbConsulta
                 var escopo = new ManagementScope(EscopoStorage);
                 escopo.Connect();
 
+                // Com o mesmo prazo da listagem, e pelo mesmo motivo: sem Timeout, um
+                // provedor de armazenamento engasgado bloqueia sem prazo, e o
+                // CancellationToken do Task.Run não interrompe um Get() já em curso.
+                var opcoes = new System.Management.EnumerationOptions
+                {
+                    ReturnImmediately = true,
+                    Rewindable = false,
+                    Timeout = TimeSpan.FromSeconds(20),
+                };
+
                 using var busca = new ManagementObjectSearcher(escopo,
-                    new ObjectQuery($"SELECT * FROM MSFT_Disk WHERE Number = {alvo.Numero}"));
+                    new ObjectQuery($"SELECT * FROM MSFT_Disk WHERE Number = {alvo.Numero}"), opcoes);
 
                 foreach (ManagementBaseObject d in busca.Get())
                     using (d)
