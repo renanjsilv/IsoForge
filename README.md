@@ -141,9 +141,16 @@ Ela personaliza **as nove distribuições**, com tudo o que a versão do Windows
 usuário, disco (com LUKS opcional), região e teclado, programas, SSH, Wi-Fi, aparência,
 otimização e script pós-instalação.
 
-**O que ela não faz:** personalizar ISOs **do Windows**. A injeção de drivers depende do DISM
-e a recompilação da imagem depende do `oscdimg`, e os dois são ferramentas do Windows sem
-equivalente prático fora dele. Para ISOs do Windows, use a versão do Windows.
+**O que ela não faz:** personalizar ISOs **do Windows**. Para essas, use a versão do Windows.
+
+O que prende esse caminho ao Windows é a recompilação da imagem (`oscdimg`, do ADK) e a
+divisão do `install.wim` para caber em FAT32 (`DISM`). A injeção de drivers **não** está
+nessa lista: o IsoForge copia os `.inf` para a mídia e deixa o `<DriverPaths>` do
+`autounattend.xml` fazer o trabalho no primeiro boot — quem instala os drivers é o Setup do
+Windows na máquina de destino, não o IsoForge na máquina que gera a ISO.
+
+Existem equivalentes conhecidos para as duas peças (`xorriso` e `wimlib`), mas eu ainda não
+verifiquei se a ISO resultante arranca. Enquanto não verificar, fica fora.
 
 ### Como ela gera a ISO
 

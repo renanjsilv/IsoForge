@@ -142,9 +142,16 @@ It customizes **all nine distributions**, with everything the Windows build does
 user, disk (with optional LUKS), locale and keyboard, software, SSH, Wi-Fi, appearance,
 tuning and a post-install script.
 
-**What it does not do:** customize **Windows** ISOs. Driver injection needs DISM and rebuilding
-the image needs `oscdimg`, and both are Windows tools with no practical equivalent elsewhere.
-For Windows ISOs, use the Windows build.
+**What it does not do:** customize **Windows** ISOs. For those, use the Windows build.
+
+What ties that path to Windows is rebuilding the image (`oscdimg`, from the ADK) and splitting
+`install.wim` to fit FAT32 (`DISM`). Driver injection is **not** on that list: IsoForge copies
+the `.inf` files onto the media and lets `<DriverPaths>` in `autounattend.xml` do the work at
+first boot — Windows Setup installs the drivers on the target machine, not IsoForge on the
+machine building the ISO.
+
+Known equivalents exist for both pieces (`xorriso` and `wimlib`), but I have not yet verified
+that the resulting ISO boots. Until I do, it stays out.
 
 ### How it builds the ISO
 
