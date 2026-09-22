@@ -27,6 +27,15 @@ public partial class UsbPickerWindow : Window
     /// <summary>A janela fechou pedindo para reabrir o IsoForge como administrador.</summary>
     public bool PediuElevacao { get; private set; }
 
+    /// <summary>
+    /// O disco que a pessoa tinha escolhido quando pediu a elevação.
+    ///
+    /// Existe para a instância elevada continuar de onde parou em vez de mandar escolher e
+    /// confirmar tudo de novo. Não é autorização: quem for gravar reconsulta o Windows e
+    /// só aceita um disco que a consulta DELE devolveu como gravável.
+    /// </summary>
+    public UsbDisco? Pretendido { get; private set; }
+
     public UsbPickerWindow()
     {
         InitializeComponent();
@@ -62,11 +71,21 @@ public partial class UsbPickerWindow : Window
                 // em "sim" no aviso do Windows.
                 podeElevar: _ultimo.Falha == FalhaListagem.PermissaoNegada);
         }
-        else
+        else if (_ultimo.Discos.Count == 0)
         {
+            // SÓ quando não há nenhum pendrive utilizável. Aí a lista dos recusados é a
+            // resposta à pergunta "por que não aparece nada?" — é diagnóstico, e sem ela
+            // a tela volta a ser indistinguível de "não tem pendrive".
             TxtVazio.Text = titulo;
             if (!string.IsNullOrWhiteSpace(detalhe))
-                MostrarPainel("Nem todo disco pode ser gravado.", detalhe, podeElevar: false);
+                MostrarPainel(titulo, detalhe, podeElevar: false);
+        }
+        else
+        {
+            // Havendo pendrive, o resto é ruído: quem escolhe o pendrive não precisa ler
+            // o modelo do próprio HD interno num painel de alerta. Eles não aparecem na
+            // lista, que é o que importa.
+            TxtVazio.Text = titulo;
         }
 
         // O aviso de Administrador aparece antes de a pessoa escolher, não depois de
@@ -164,8 +183,12 @@ public partial class UsbPickerWindow : Window
         if (!UsbWriter.EhAdministrador())
         {
             // Não grava daqui: quem reabre o IsoForge elevado é a janela principal, que é
-            // quem sabe se há trabalho em andamento e é dona da configuração.
+            // quem sabe se há trabalho em andamento e é dona da configuração. Mas o disco
+            // escolhido vai junto: a pessoa já escolheu e já confirmou, e pedir as duas
+            // coisas de novo do outro lado do UAC é fazê-la trabalhar por uma decisão
+            // que foi nossa.
             PediuElevacao = true;
+            Pretendido = alvo;
             DialogResult = false;
             return;
         }

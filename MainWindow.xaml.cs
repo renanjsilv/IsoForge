@@ -106,6 +106,13 @@ public partial class MainWindow : Window
             {
                 try
                 {
+                    // Com bastão válido, continua direto: a pessoa já escolheu o pendrive e
+                    // já marcou que entendeu que apaga tudo, do outro lado do UAC. Pedir as
+                    // duas coisas de novo é cobrar duas vezes pela mesma decisão — e ensina
+                    // a clicar em confirmações sem ler.
+                    var bastao = Bastao.Consumir();
+                    if (bastao != null && await RetomarGravacaoAsync(bastao)) return;
+
                     if (App.IsoParaGravar != null)
                         await OfereceGravarPendriveAsync(App.IsoParaGravar, reaberto: true);
                     else
@@ -1622,18 +1629,33 @@ public partial class MainWindow : Window
         {
             // A ISO já existe em disco: o caminho dela é a única coisa que atravessa para a
             // instância elevada, e como dica — ela reapresenta a escolha do pendrive.
-            await EntregarBastaoAsync($"--pendrive {Elevacao.Citar(Path.GetFullPath(isoPath))}");
+            await EntregarBastaoAsync($"--pendrive {Elevacao.Citar(Path.GetFullPath(isoPath))}",
+                                      escolha.Pretendido, Path.GetFullPath(isoPath));
             return;
         }
         if (escolha.Escolhido is not { } alvo) return;
 
+        await GravarNoPendriveAsync(alvo, isoPath);
+    }
+
+    /// <summary>
+    /// O único lugar que grava no pendrive. Os dois cliques e a retomada depois da
+    /// elevação passam por aqui — antes eram dois corpos quase iguais, e a retomada seria
+    /// um terceiro.
+    /// </summary>
+    /// <param name="isoPronta">
+    /// Caminho de uma ISO já gerada, para gravá-la direto. Null significa rodar o pipeline
+    /// inteiro até o pendrive, sem passar por um arquivo .iso.
+    /// </param>
+    async Task GravarNoPendriveAsync(UsbDisco alvo, string? isoPronta)
+    {
         SetBusy(true);
         _cts = new CancellationTokenSource();
         var progress = new Progress<string>(AppendLog);
         // O marco vira nome de etapa: os numeros do gravador sao pontos (78 formatado,
-        // 82 WIM partido, 98 copia feita), nao medida continua. Quem informa e o texto.
-        // O clamp existe porque Progress<T>.Report e assincrono: um tique atrasado pode
-        // chegar depois do marco seguinte e fazer a barra andar para tras.
+        // 82 WIM partido, 98 copia feita). O clamp existe porque Progress<T>.Report e
+        // assincrono: um tique atrasado pode chegar depois do marco seguinte e fazer a
+        // barra andar para tras.
         var percent = new Progress<int>(p => Dispatcher.Invoke(() =>
         {
             if (p > BuildProgress.Value) BuildProgress.Value = p;
@@ -1643,10 +1665,20 @@ public partial class MainWindow : Window
         BuildProgressPanel.Visibility = Visibility.Visible;
         try
         {
-            AppendLog($"==== Gravando a ISO em {alvo.Rotulo} ====");
+            AppendLog($"==== Gravando no pendrive: {alvo.Rotulo} ====");
             Etapa($"Preparando os arquivos — {alvo.Nome}");
-            await Task.Run(() => new IsoPipeline(progress, percent)
-                .GravarIsoEmPendriveAsync(isoPath, alvo, _cts.Token));
+
+            if (isoPronta != null)
+                await Task.Run(() => new IsoPipeline(progress, percent)
+                    .GravarIsoEmPendriveAsync(isoPronta, alvo, _cts.Token));
+            else
+            {
+                var cfg = CollectConfig();
+                await Task.Run(() => new IsoPipeline(progress, percent)
+                    .BuildToUsbAsync(cfg, alvo, _cts.Token));
+                VarrerConclusao(true);
+            }
+
             MostrarEstado(Atividade.Concluido, "Pendrive pronto");
             Caixa.Concluir(this, "Pendrive pronto", $"{alvo.Rotulo} está pronto para instalar.");
         }
@@ -1669,6 +1701,40 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Retoma a gravação que a instância anterior tinha começado, sem perguntar de novo.
+    ///
+    /// O bastão diz QUAL disco era; quem decide se ele pode ser gravado é a consulta que
+    /// acontece aqui, agora, com todas as travas. O disco usado é o objeto que ESTA
+    /// consulta devolveu — o bastão nunca vira alvo por conta própria. Se o pendrive foi
+    /// trocado, retirado ou mudou de número, não há retomada: cai na tela de escolha.
+    /// </summary>
+    async Task<bool> RetomarGravacaoAsync(Bastao b)
+    {
+        AppendLog("Reaberto como administrador. Retomando a gravação...");
+        var lista = await UsbWriter.ListarAsync();
+        var alvo = lista.Discos.FirstOrDefault(d =>
+            d.Numero == b.Disco
+            && string.Equals(d.Nome, b.Modelo, StringComparison.OrdinalIgnoreCase)
+            && d.Bytes == b.Bytes);
+
+        if (alvo == null)
+        {
+            AppendLog($"O disco {b.Disco} ({b.Modelo}) não está mais disponível como antes. "
+                      + "Escolha de novo.");
+            return false;
+        }
+
+        if (b.IsoPronta != null && !File.Exists(b.IsoPronta))
+        {
+            AppendLog($"A ISO {b.IsoPronta} não está mais lá. Escolha de novo.");
+            return false;
+        }
+
+        await GravarNoPendriveAsync(alvo, b.IsoPronta);
+        return true;
+    }
+
+    /// <summary>
     /// Reabre o IsoForge como administrador e encerra esta instância.
     ///
     /// Particionar e formatar são operações privilegiadas: não há como o processo atual
@@ -1676,7 +1742,7 @@ public partial class MainWindow : Window
     /// o botão direito — que é o programa sabendo o que fazer e pedindo que o façam por ele
     /// —, o IsoForge se relança.
     /// </summary>
-    async Task EntregarBastaoAsync(string argumentos)
+    async Task EntregarBastaoAsync(string argumentos, UsbDisco? pretendido = null, string? isoPronta = null)
     {
         // Já viemos de uma elevação e ainda não somos administrador: relançar de novo só
         // repetiria o aviso do Windows sem fim. Melhor dizer o que aconteceu.
@@ -1702,6 +1768,13 @@ public partial class MainWindow : Window
         // A configuração precisa estar em disco ANTES de fechar: é por ela, cifrada, que a
         // instância elevada recebe o que estava preenchido na tela.
         try { CollectConfig(); } catch { /* melhor esforço: não impedir a elevação */ }
+
+        // E o bastão, com o disco já escolhido. Cifrado, de uso único e válido por dois
+        // minutos — ver Core/Bastao.cs para o porquê de não ir na linha de comando.
+        Bastao.Descartar();
+        if (pretendido != null)
+            Bastao.Guardar(new Bastao(pretendido.Numero, pretendido.Nome, pretendido.Bytes,
+                                      isoPronta, DateTime.Now));
 
         var (resultado, erro) = Elevacao.Relancar(argumentos);
         switch (resultado)
@@ -1757,50 +1830,12 @@ public partial class MainWindow : Window
         {
             // Sem caminho de ISO: aqui o pipeline inteiro ainda vai rodar, e a configuração
             // viaja pelo settings.dat cifrado, nunca pela linha de comando.
-            await EntregarBastaoAsync("--pendrive");
+            await EntregarBastaoAsync("--pendrive", escolha.Pretendido);
             return;
         }
         if (escolha.Escolhido is not { } alvo) return;
 
-        SetBusy(true);
-        _cts = new CancellationTokenSource();
-        var progress = new Progress<string>(AppendLog);
-        // O marco vira nome de etapa: os numeros do gravador sao pontos (78 formatado,
-        // 82 WIM partido, 98 copia feita), nao medida continua. Quem informa e o texto.
-        // O clamp existe porque Progress<T>.Report e assincrono: um tique atrasado pode
-        // chegar depois do marco seguinte e fazer a barra andar para tras.
-        var percent = new Progress<int>(p => Dispatcher.Invoke(() =>
-        {
-            if (p > BuildProgress.Value) BuildProgress.Value = p;
-            EtapaDoPendrive(p);
-        }));
-        BuildProgress.Value = 0;
-        BuildProgressPanel.Visibility = Visibility.Visible;
-        try
-        {
-            AppendLog($"==== Gravando no pendrive: {alvo.Rotulo} ====");
-            Etapa($"Preparando os arquivos — {alvo.Nome}");
-            await Task.Run(() => new IsoPipeline(progress, percent).BuildToUsbAsync(cfg, alvo, _cts.Token));
-            MostrarEstado(Atividade.Concluido, "Pendrive pronto");
-            VarrerConclusao(true);
-            Caixa.Informar(this, $"Pendrive pronto para instalar:\n{alvo.Rotulo}");
-        }
-        catch (OperationCanceledException)
-        {
-            AppendLog("Interrompido a pedido. O processo em execucao foi encerrado.");
-            MostrarEstado(Atividade.Parado, "Interrompido");
-        }
-        catch (Exception ex)
-        {
-            AppendLog($"ERRO: {ex.Message}");
-            MostrarEstado(Atividade.Falhou, "Falhou");
-            Caixa.Erro(this, ex.Message);
-        }
-        finally
-        {
-            SetBusy(false);
-            BuildProgressPanel.Visibility = Visibility.Collapsed;
-        }
+        await GravarNoPendriveAsync(alvo, isoPronta: null);
     }
 
     async void Build_Click(object sender, RoutedEventArgs e)

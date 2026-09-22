@@ -322,10 +322,11 @@ public static class UsbConsulta
     {
         if (r.Falha == FalhaListagem.Nenhuma)
         {
+            // Achou pendrive: a frase não fala dos outros discos, e o detalhe vem vazio.
+            // Contar "outros 3 não podem ser usados" só levava quem está escolhendo um
+            // pendrive a ler sobre o HD interno da própria máquina.
             if (r.Discos.Count > 0)
-                return ($"{r.Discos.Count} disco(s) removível(is) encontrado(s)."
-                        + (r.Recusados.Count > 0 ? $" Outros {r.Recusados.Count} não podem ser usados." : ""),
-                        TextoRecusados(r), false);
+                return ($"{r.Discos.Count} disco(s) removível(is) encontrado(s).", null, false);
 
             if (r.Recusados.Count == 0)
                 return ("Nenhum pendrive encontrado. Conecte um e clique em Atualizar lista.", null, false);

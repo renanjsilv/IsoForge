@@ -1530,8 +1530,13 @@ ao\existe" };
         new() { new DiscoRecusado(1, "SSD interno", 512_000_000_000, "é o disco de SISTEMA") });
     var (tAchou, dAchou, eAchou) = UsbConsulta.Mensagem(achou);
     Check(!eAchou && tAchou.Contains("1 disco"), "tela: achou um pendrive e diz isso");
-    Check(dAchou != null && dAchou.Contains("SISTEMA"),
-          "tela: mesmo achando, explica por que os outros discos nao aparecem");
+    // Esta afirmacao ja foi o contrario. Eu tinha feito a tela listar os discos recusados
+    // SEMPRE, para "vi 3 e nenhum serve" ser distinguivel de "nao tem pendrive". So que,
+    // havendo pendrive, aquilo virava um painel de alerta exibindo o modelo do HD interno
+    // de quem so queria escolher um pendrive. A distincao continua existindo — mas so no
+    // caso em que ela responde alguma coisa, que e quando nao ha pendrive nenhum.
+    Check(dAchou == null,
+          "tela: achando pendrive, nao ha alerta nenhum sobre os discos internos");
 
     // Le o fonte da janela principal a partir da pasta de saida, subindo ate achar.
     // Afirmar sobre XAML sem WPF e o unico jeito de a suite proteger decisoes de layout.
@@ -1661,6 +1666,93 @@ ao\existe" };
         {
             try { if (Directory.Exists(raiz)) { IsoTools.ResetAttributes(raiz); Directory.Delete(raiz, true); } } catch { }
         }
+    }
+
+    // ------------------------------------------------- o bastao entre as instancias
+    // A instancia elevada continua de onde a anterior parou. O bastao diz QUAL disco era;
+    // quem decide se pode gravar e a consulta nova, com todas as travas. Ele nunca e
+    // autorizacao — por isso nada disso vai na linha de comando.
+    {
+        var original = new Bastao(2, "USB SanDisk 3.2Gen1", 30784094208L, null, DateTime.Now);
+        Bastao.Guardar(original);
+
+        var lido = Bastao.Consumir();
+        Check(lido != null && lido.Disco == 2 && lido.Modelo == original.Modelo && lido.Bytes == original.Bytes,
+              "bastao: o disco escolhido atravessa a elevacao");
+
+        Check(Bastao.Consumir() == null,
+              "bastao: e de USO UNICO — some na leitura, nao fica esperando a proxima abertura");
+
+        // Velho demais nao vale: a janela e o tempo de responder ao aviso do Windows.
+        Bastao.Guardar(new Bastao(2, "x", 1, null, DateTime.Now - Bastao.Validade - TimeSpan.FromMinutes(1)));
+        Check(Bastao.Consumir() == null, "bastao: vencido e recusado");
+
+        // E some mesmo assim, para nao sobrar para a proxima vez.
+        Bastao.Guardar(new Bastao(2, "x", 1, null, DateTime.Now - Bastao.Validade - TimeSpan.FromMinutes(1)));
+        Bastao.Consumir();
+        Check(Bastao.Consumir() == null, "bastao: o vencido e apagado, nao so ignorado");
+
+        // Arquivo corrompido: nao confio, pergunto de novo.
+        var caminho = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "IsoForge", "bastao.bin");
+        Directory.CreateDirectory(Path.GetDirectoryName(caminho)!);
+        File.WriteAllBytes(caminho, new byte[] { 1, 2, 3, 4, 5 });
+        Check(Bastao.Consumir() == null, "bastao: ilegivel e recusado (outra conta do Windows, por exemplo)");
+
+        Bastao.Descartar();
+        Check(Bastao.Consumir() == null, "bastao: Descartar limpa o que tiver sobrado");
+
+        // O caminho da ISO viaja junto, para o fluxo que grava uma imagem ja pronta.
+        Bastao.Guardar(new Bastao(3, "Kingston", 64_000_000_000L, @"C:\saida\imagem.iso", DateTime.Now));
+        var comIso = Bastao.Consumir();
+        Check(comIso != null && comIso.IsoPronta == @"C:\saida\imagem.iso",
+              "bastao: leva tambem a ISO ja gerada, quando o fluxo era esse");
+    }
+
+    // ---------------------------------------------- a retomada nao vira autorizacao
+    {
+        var (xaml, cs) = FonteDaJanela();
+
+        Check(cs.Contains("async Task<bool> RetomarGravacaoAsync(Bastao b)"),
+              "retomada: existe um caminho que continua a gravacao sem perguntar de novo");
+        Check(cs.Contains("var lista = await UsbWriter.ListarAsync();"),
+              "retomada: a instancia elevada RECONSULTA o Windows em vez de confiar no bastao");
+        Check(cs.Contains("lista.Discos.FirstOrDefault"),
+              "retomada: o alvo e um disco que a consulta NOVA devolveu como gravavel");
+        Check(!cs.Contains("--gravar-disco") && !cs.Contains("--disco"),
+              "retomada: nao existe argumento de linha de comando que mande formatar um disco");
+
+        string? bastaoSrc = null;
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+        {
+            var tent = Path.Combine(d.FullName, "Core", "Bastao.cs");
+            if (File.Exists(tent)) { bastaoSrc = File.ReadAllText(tent); break; }
+        }
+        Check(bastaoSrc != null && bastaoSrc.Contains("Cofre.Cifrar"),
+              "bastao: gravado cifrado (outra conta do Windows nao le)");
+    }
+
+    // --------------------------------------- so pendrive na tela, sem falar do HD interno
+    {
+        var comPendrive = ResultadoListagem.Ok(
+            new() { new UsbDisco(2, "SanDisk", 32_000_000_000, "USB", "D:", FonteDisco.MsftDisk) },
+            new() { new DiscoRecusado(0, "Samsung SSD 990 PRO", 2_000_000_000_000, "é o disco de SISTEMA") });
+        var (titulo, detalhe, ehErro) = UsbConsulta.Mensagem(comPendrive);
+        Check(!ehErro && titulo.Contains("1 disco"), "tela: diz quantos pendrives achou");
+        Check(detalhe == null,
+              "tela: achando pendrive, NAO lista os discos internos (o modelo do HD da pessoa nao vem ao caso)");
+        Check(!titulo.Contains("Outros"), "tela: nem conta quantos foram recusados");
+
+        // Sem pendrive nenhum, a lista dos recusados volta: ai ela e a resposta a
+        // pergunta "por que nao aparece nada?".
+        var nenhum = ResultadoListagem.Ok(new(), new()
+        {
+            new DiscoRecusado(2, "Kingston DataTraveler", 64_000_000_000, "barramento SCSI — só USB e SD entram na lista"),
+        });
+        var (t2, d2, _) = UsbConsulta.Mensagem(nenhum);
+        Check(d2 != null && d2.Contains("Kingston"),
+              "tela: sem pendrive utilizavel, a lista dos recusados volta — ai ela explica");
     }
 
     // ------------------------------------------- retomar onde parou, e poder parar
