@@ -273,6 +273,9 @@ public class IsoPipeline
     /// <summary>Zera atributos de arquivos e pastas para permitir a exclusão.</summary>
     static void ResetAttributes(string path)
     {
+        // A raiz primeiro: era ela que ficava com o ReadOnly vindo da ISO montada, e uma
+        // pasta ReadOnly nao se apaga nem como administrador.
+        try { new DirectoryInfo(path).Attributes = FileAttributes.Directory; } catch { }
         try
         {
             foreach (var f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
@@ -503,7 +506,7 @@ public class IsoPipeline
         Log("Extraindo conteúdo da ISO (isso pode levar alguns minutos)...");
         // robocopy retorna 0-7 em sucesso; >= 8 é erro
         var exit = await RunProcessRawAsync("robocopy.exe",
-            $"{drive}:\\ \"{staging}\" /E /R:2 /W:2 /NFL /NDL /NJH /NP", ct);
+            $"{drive}:\\ \"{staging}\" /E /DCOPY:T /R:2 /W:2 /NFL /NDL /NJH /NP", ct);
         if (exit >= 8)
             throw new InvalidOperationException($"Falha ao copiar arquivos da ISO (robocopy código {exit}).");
         Log("Extração concluída.");
@@ -512,7 +515,10 @@ public class IsoPipeline
     static void ClearReadOnly(DirectoryInfo dir)
     {
         foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
-            file.Attributes = FileAttributes.Normal;
+            try { file.Attributes = FileAttributes.Normal; } catch { }
+        foreach (var sub in dir.GetDirectories("*", SearchOption.AllDirectories))
+            try { sub.Attributes = FileAttributes.Directory; } catch { }
+        try { dir.Attributes = FileAttributes.Directory; } catch { }
     }
 
     /// <summary>Versão de produto de um .exe (null se o arquivo não existir/não tiver).</summary>

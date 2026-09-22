@@ -1624,6 +1624,45 @@ ao\existe" };
               "console: aberto pelo trabalho, volta a fechar depois (senao a tela baixa fica amputada)");
     }
 
+    // ------------------------------------------ a pasta de trabalho tem de sumir
+    // "Access to the path ... usb_2026... is denied", sempre, mesmo como administrador.
+    // Nao e o antivirus: o robocopy copia os ATRIBUTOS das pastas por padrao, a origem
+    // e uma ISO montada (tudo somente-leitura), e o atributo ReadOnly acaba na PROPRIA
+    // pasta de trabalho. Directory.Delete numa pasta ReadOnly da Access Denied para
+    // qualquer um, administrador ou nao. O ResetAttributes limpava arquivos e subpastas
+    // e nunca a raiz.
+    {
+        var raiz = Path.Combine(Path.GetTempPath(), "isoforge-ro-" + Guid.NewGuid().ToString("N")[..8]);
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(raiz, "sources"));
+            File.WriteAllText(Path.Combine(raiz, "sources", "um.txt"), "x");
+            File.SetAttributes(Path.Combine(raiz, "sources", "um.txt"), FileAttributes.ReadOnly);
+            new DirectoryInfo(Path.Combine(raiz, "sources")).Attributes |= FileAttributes.ReadOnly;
+            new DirectoryInfo(raiz).Attributes |= FileAttributes.ReadOnly;   // <- o que ninguem limpava
+
+            // O mecanismo, afirmado explicitamente: sem limpar a raiz, o Delete recusa.
+            var recusou = false;
+            try { Directory.Delete(raiz, true); }
+            catch (UnauthorizedAccessException) { recusou = true; }
+            Check(recusou, "limpeza: Directory.Delete recusa uma pasta com atributo ReadOnly (e a raiz ficava assim)");
+
+            IsoTools.ResetAttributes(raiz);
+            var limpou = (new DirectoryInfo(raiz).Attributes & FileAttributes.ReadOnly) == 0;
+            Check(limpou, "limpeza: ResetAttributes limpa tambem a RAIZ, nao so o conteudo");
+
+            var linhas = new List<string>();
+            IsoTools.ForceDeleteDirectory(raiz, linhas.Add);
+            Check(!Directory.Exists(raiz), "limpeza: a pasta de trabalho some de verdade");
+            Check(linhas.Count == 0,
+                  "limpeza: e some SEM aviso — o 'limpeza direta falhou' aparecia em toda gravacao");
+        }
+        finally
+        {
+            try { if (Directory.Exists(raiz)) { IsoTools.ResetAttributes(raiz); Directory.Delete(raiz, true); } } catch { }
+        }
+    }
+
     // ------------------------------------------- retomar onde parou, e poder parar
     {
         var (xaml, cs) = FonteDaJanela();
@@ -1673,6 +1712,36 @@ ao\existe" };
               "progresso: ha um relogio de etapa — o tempo decorrido e a unica medida que nao mente");
         Check(xaml.Contains("<TaskbarItemInfo"),
               "progresso: a barra de tarefas tambem mostra (e o unico canal com a janela minimizada)");
+
+        // A porcentagem VOLTOU nos dois passos longos — mas so porque agora ela se mexe:
+        // quem mede e o contador de E/S do processo filho, nao um palpite.
+        Check(cs.Contains("Etapa(\"Partindo o install.wim (nao cabe em FAT32)\", medido: true)")
+              || cs.Contains("medido: true"),
+              "progresso: as etapas longas sao MEDIDAS (a porcentagem voltou a aparecer)");
+
+        string? medidor = null;
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+        {
+            var tent = Path.Combine(d.FullName, "Core", "MedidorDeEscrita.cs");
+            if (File.Exists(tent)) { medidor = File.ReadAllText(tent); break; }
+        }
+        Check(medidor != null && medidor.Contains("GetProcessIoCounters"),
+              "progresso: a medida vem do contador de E/S do processo, nao do espaco livre do destino");
+        Check(medidor != null && medidor.Contains("IsBackground = true"),
+              "progresso: o medidor roda em thread propria de fundo (ler na thread da interface congelaria a janela)");
+        Check(medidor != null && medidor.Contains("ate - de - 1"),
+              "progresso: o medidor para um ponto antes do fim — quem encerra a etapa e quem a executou");
+
+        string? gravador = null;
+        for (var d = new DirectoryInfo(AppContext.BaseDirectory); d != null; d = d.Parent)
+        {
+            var tent = Path.Combine(d.FullName, "Core", "UsbWriter.cs");
+            if (File.Exists(tent)) { gravador = File.ReadAllText(tent); break; }
+        }
+        Check(gravador != null && gravador.Contains("var bytesACopiar = TamanhoPastaBytes(origem);"),
+              "progresso: o total da copia e medido DEPOIS de partir o WIM (antes o denominador ficava pequeno)");
+        Check(gravador != null && gravador.Contains("/DCOPY:T"),
+              "limpeza: o robocopy nao carimba mais os atributos da ISO montada no destino");
     }
 
     // ------------------------------------------------------------------ elevacao

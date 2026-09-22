@@ -145,17 +145,23 @@ public static class IsoTools
         // com -- 4,2x. O ganho vem de sobrepor a leitura da midia com a escrita no
         // destino, que single-thread acontecem em serie.
         var exit = await RunAsync("robocopy.exe",
-            $"{drive}:\\ \"{staging}\" /E /MT:16 /R:2 /W:2 /NFL /NDL /NJH /NP", log, ct);
+            $"{drive}:\\ \"{staging}\" /E /MT:16 /DCOPY:T /R:2 /W:2 /NFL /NDL /NJH /NP", log, ct);
         if (exit >= 8)
             throw new InvalidOperationException($"Falha ao copiar arquivos da ISO (robocopy código {exit}).");
         log("Extração concluída.");
     }
 
-    /// <summary>Zera o atributo somente-leitura herdado da mídia ótica.</summary>
+    /// <summary>
+    /// Zera o atributo somente-leitura herdado da mídia ótica — dos arquivos E das pastas,
+    /// a própria incluída. Só os arquivos não bastava: a pasta com ReadOnly não se apaga.
+    /// </summary>
     public static void ClearReadOnly(DirectoryInfo dir)
     {
         foreach (var file in dir.GetFiles("*", SearchOption.AllDirectories))
-            file.Attributes = FileAttributes.Normal;
+            try { file.Attributes = FileAttributes.Normal; } catch { }
+        foreach (var sub in dir.GetDirectories("*", SearchOption.AllDirectories))
+            try { sub.Attributes = FileAttributes.Directory; } catch { }
+        try { dir.Attributes = FileAttributes.Directory; } catch { }
     }
 
     // ------------------------------------------------------------------
@@ -206,9 +212,19 @@ public static class IsoTools
             log($"Aviso: sobraram arquivos em {path} (algum programa ainda os segura). Serão removidos na próxima geração.");
     }
 
-    /// <summary>Zera atributos de arquivos e pastas para permitir a exclusão.</summary>
+    /// <summary>
+    /// Zera atributos de arquivos e pastas para permitir a exclusão.
+    ///
+    /// A RAIZ entra junto, e é justamente ela que faltava. O robocopy copia os atributos
+    /// das pastas por padrão; a origem é uma ISO montada, onde tudo é somente-leitura; e o
+    /// ReadOnly acabava na própria pasta de trabalho. Directory.Delete recusa uma pasta com
+    /// ReadOnly com "Access denied" — para qualquer um, administrador inclusive. O
+    /// resultado era um "limpeza direta falhou" em TODA gravação, cinco tentativas de 800 ms
+    /// jogadas fora, e o "rd /s /q" salvando no fim.
+    /// </summary>
     public static void ResetAttributes(string path)
     {
+        try { new DirectoryInfo(path).Attributes = FileAttributes.Directory; } catch { }
         try
         {
             foreach (var f in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))

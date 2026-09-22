@@ -147,8 +147,12 @@ public sealed class UsbWriter
         await PartirInstallWimAsync(origem, ct);
         _pct?.Invoke(82);
 
-        _log("Copiando os arquivos para o pendrive...");
-        await CopiarAsync(origem, letra + ":\\", ct);
+        // Medido AGORA, e não lá em cima: partir o install.wim troca um arquivo por vários
+        // .swm, e cada pedaço leva o próprio cabeçalho. Usar o total de antes deixaria o
+        // denominador menor que a realidade e a barra nunca chegaria ao fim.
+        var bytesACopiar = TamanhoPastaBytes(origem);
+        _log($"Copiando os arquivos para o pendrive ({bytesACopiar / 1024.0 / 1024 / 1024:F2} GB)...");
+        await CopiarAsync(origem, letra + ":\\", bytesACopiar, ct);
         _pct?.Invoke(98);
     }
 
@@ -297,8 +301,11 @@ public sealed class UsbWriter
 
         _log($"install.wim tem {tamanho / 1024.0 / 1024 / 1024:F2} GB — acima do limite do FAT32. Partindo em .swm...");
         var swm = Path.Combine(staging, "sources", "install.swm");
+        MedidorDeEscrita? medidor = null;
         var exit = await RodarAsync("dism.exe",
-            $"/English /Split-Image /ImageFile:\"{wim}\" /SWMFile:\"{swm}\" /FileSize:{PedacoSwmMb}", ct);
+            $"/English /Split-Image /ImageFile:\"{wim}\" /SWMFile:\"{swm}\" /FileSize:{PedacoSwmMb}", ct,
+            p => medidor = new MedidorDeEscrita(p, tamanho, 78, 82, x => _pct?.Invoke(x)));
+        medidor?.Dispose();
         if (exit != 0)
             throw new InvalidOperationException(
                 $"Não consegui partir o install.wim (DISM devolveu {exit}). Sem isso o arquivo não cabe no pendrive.");
@@ -308,12 +315,15 @@ public sealed class UsbWriter
         _log($"install.wim partido em {pedacos} arquivo(s) .swm. O Setup do Windows lê esse formato nativamente.");
     }
 
-    async Task CopiarAsync(string origem, string destino, CancellationToken ct)
+    async Task CopiarAsync(string origem, string destino, long totalBytes, CancellationToken ct)
     {
         // Mesmos parâmetros da cópia do pipeline: /MT acelera muito em pendrive rápido,
         // e os /N* tiram a listagem arquivo a arquivo do log.
+        MedidorDeEscrita? medidor = null;
         var exit = await RodarAsync("robocopy.exe",
-            $"\"{origem.TrimEnd('\\')}\" \"{destino.TrimEnd('\\')}\" /E /MT:8 /R:2 /W:2 /NFL /NDL /NJH /NP", ct);
+            $"\"{origem.TrimEnd('\\')}\" \"{destino.TrimEnd('\\')}\" /E /MT:8 /DCOPY:T /R:2 /W:2 /NFL /NDL /NJH /NP", ct,
+            p => medidor = new MedidorDeEscrita(p, totalBytes, 82, 98, x => _pct?.Invoke(x)));
+        medidor?.Dispose();
         // robocopy usa códigos de bits: < 8 é sucesso (0 = nada a copiar, 1 = copiou...).
         if (exit >= 8)
             throw new InvalidOperationException($"A cópia para o pendrive falhou (robocopy devolveu {exit}).");
@@ -328,9 +338,13 @@ public sealed class UsbWriter
             .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
     }
 
-    static double TamanhoPastaGb(string pasta) =>
-        new DirectoryInfo(pasta).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length)
-        / 1024.0 / 1024.0 / 1024.0;
+    static long TamanhoPastaBytes(string pasta)
+    {
+        try { return new DirectoryInfo(pasta).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length); }
+        catch { return 0; }   // subárvore inacessível: melhor medir nada que explodir
+    }
+
+    static double TamanhoPastaGb(string pasta) => TamanhoPastaBytes(pasta) / 1024.0 / 1024.0 / 1024.0;
 
     /// <summary>
     /// Roda um script PowerShell gravando-o num arquivo e passando o caminho com
@@ -375,10 +389,15 @@ public sealed class UsbWriter
         return sb.ToString();
     }
 
-    Task<int> RodarAsync(string exe, string args, CancellationToken ct) =>
-        RodarCoreAsync(exe, args, ct, linha => _log("  " + linha));
+    Task<int> RodarAsync(string exe, string args, CancellationToken ct, Action<Process>? aoIniciar = null) =>
+        RodarCoreAsync(exe, args, ct, linha => _log("  " + linha), aoIniciar);
 
-    static async Task<int> RodarCoreAsync(string exe, string args, CancellationToken ct, Action<string> aoVivo)
+    /// <param name="aoIniciar">
+    /// Chamado logo depois do Start, com o processo. É por aqui que o medidor de escrita
+    /// enxerga quanto já foi gravado — e é o mesmo gancho que o cancelamento usa.
+    /// </param>
+    static async Task<int> RodarCoreAsync(string exe, string args, CancellationToken ct,
+                                          Action<string> aoVivo, Action<Process>? aoIniciar = null)
     {
         var psi = new ProcessStartInfo(exe, args)
         {
@@ -394,6 +413,7 @@ public sealed class UsbWriter
         p.OutputDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) aoVivo(e.Data); };
         p.ErrorDataReceived += (_, e) => { if (!string.IsNullOrWhiteSpace(e.Data)) aoVivo(e.Data); };
         p.Start();
+        try { aoIniciar?.Invoke(p); } catch { /* medir nunca pode atrapalhar o trabalho */ }
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
         // Cancelar precisa MATAR o filho, e a árvore dele.

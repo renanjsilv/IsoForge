@@ -42,6 +42,7 @@
     <Compile Include="..\Core\BloatCatalog.cs" Link="Core\BloatCatalog.cs" />
     <Compile Include="..\Core\UsbWriter.cs" Link="Core\UsbWriter.cs" />
     <Compile Include="..\Core\UsbConsulta.cs" Link="Core\UsbConsulta.cs" />
+    <Compile Include="..\Core\MedidorDeEscrita.cs" Link="Core\MedidorDeEscrita.cs" />
     <Compile Include="..\Core\Elevacao.cs" Link="Core\Elevacao.cs" />
     <Compile Include="..\Core\ReportGenerator.cs" Link="Core\ReportGenerator.cs" />
     <Compile Include="..\Core\DriverInfScanner.cs" Link="Core\DriverInfScanner.cs" />

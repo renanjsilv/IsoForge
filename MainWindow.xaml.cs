@@ -2042,12 +2042,18 @@ public partial class MainWindow : Window
     string _etapaTexto = "";
     DateTime _etapaDesde;
 
-    /// <summary>Começa uma etapa: nome no cabeçalho, relógio correndo, barra pulsando.</summary>
-    void Etapa(string texto)
+    /// <summary>
+    /// Começa uma etapa: nome no cabeçalho e relógio correndo.
+    ///
+    /// <paramref name="medido"/> diz se existe uma medida honesta por trás. Havendo, a
+    /// barra é determinada e a porcentagem aparece; não havendo, ela pulsa e o número sai
+    /// de cena — porque um número parado durante quinze minutos é pior que número nenhum.
+    /// </summary>
+    void Etapa(string texto, bool medido = false)
     {
         _etapaTexto = texto;
         _etapaDesde = DateTime.Now;
-        Indeterminado(true);
+        Indeterminado(!medido);
         AppendLog($"— {texto}");
         AtualizarRelogio();
 
@@ -2105,8 +2111,10 @@ public partial class MainWindow : Window
     {
         switch (marco)
         {
-            case 78: Etapa("Partindo o install.wim (não cabe em FAT32)"); break;
-            case 82: Etapa("Copiando os arquivos para o pendrive"); break;
+            // Os dois passos longos são medidos pelos bytes que o processo filho escreve
+            // — contador do próprio Windows, monotônico e independente de idioma.
+            case 78: Etapa("Partindo o install.wim (não cabe em FAT32)", medido: true); break;
+            case 82: Etapa("Copiando os arquivos para o pendrive", medido: true); break;
             case 98: Etapa("Finalizando e limpando os arquivos temporários"); break;
         }
     }
