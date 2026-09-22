@@ -11,7 +11,12 @@ namespace IsoForge.Core;
 /// <param name="Bytes">Tamanho total.</param>
 /// <param name="Barramento">USB, SD...</param>
 /// <param name="Letras">Letras já montadas, para a pessoa reconhecer o pendrive.</param>
-public sealed record UsbDisco(int Numero, string Nome, long Bytes, string Barramento, string Letras)
+/// <param name="Fonte">
+/// De onde a informação veio. A gravação recusa qualquer disco que não tenha saído da
+/// consulta ao Windows — isso fecha o caminho de alguém fabricar um alvo à mão.
+/// </param>
+public sealed record UsbDisco(int Numero, string Nome, long Bytes, string Barramento, string Letras,
+                              FonteDisco Fonte = FonteDisco.Desconhecida)
 {
     public double Gb => Bytes / 1024.0 / 1024.0 / 1024.0;
 
@@ -66,64 +71,19 @@ public sealed class UsbWriter
     /// <summary>Teto do formatador FAT32 do Windows.</summary>
     const long MaxFat32Bytes = 32L * 1024 * 1024 * 1024;
 
-    /// <summary>
-    /// O script que lista os candidatos. É <c>internal</c> para os testes conseguirem
-    /// afirmar que as três travas continuam aqui — sem elas o disco do sistema poderia
-    /// aparecer na tela de escolha, e o erro custaria os dados de alguém.
-    ///
-    /// A montagem do JSON à mão para 0 e 1 item não é preciosismo: o
-    /// <c>ConvertTo-Json</c> do Windows PowerShell 5.1 (que é o que o
-    /// <c>powershell.exe</c> executa) não tem <c>-AsArray</c> e devolve um OBJETO
-    /// quando há um único elemento. Com um pendrive só conectado — o caso normal — a
-    /// desserialização falhava e a lista saía vazia: o recurso simplesmente nunca
-    /// achava pendrive nenhum.
-    /// </summary>
-    internal const string ScriptListagem = """
-        $ErrorActionPreference = 'Stop'
-        $lista = @(Get-Disk |
-          Where-Object { $_.BusType -in @('USB','SD') -and -not $_.IsSystem -and -not $_.IsBoot } |
-          ForEach-Object {
-            $d = $_
-            $letras = (Get-Partition -DiskNumber $d.Number -ErrorAction SilentlyContinue |
-                       Where-Object DriveLetter |
-                       ForEach-Object { "$($_.DriveLetter):" }) -join ' '
-            [pscustomobject]@{
-              Numero = [int]$d.Number
-              Nome = [string]$d.FriendlyName
-              Bytes = [long]$d.Size
-              Barramento = [string]$d.BusType
-              Letras = [string]$letras
-            }
-          })
-        if ($lista.Count -eq 0) { '[]' }
-        elseif ($lista.Count -eq 1) { '[' + ($lista[0] | ConvertTo-Json -Compress) + ']' }
-        else { $lista | ConvertTo-Json -Compress }
-        """;
-
     // ------------------------------------------------------------------ listagem
 
     /// <summary>
-    /// Discos que PODEM ser gravados. A lista já vem filtrada: nada de disco de sistema,
-    /// de arranque, ou que não seja removível. O que não aparece aqui não tem como ser
-    /// escolhido na tela.
+    /// Discos que PODEM ser gravados, e o motivo de cada um que não pode.
+    ///
+    /// Quem pergunta ao Windows é o <see cref="UsbConsulta"/>, dentro do próprio processo.
+    /// Antes daqui saía um script PowerShell executado com <c>-EncodedCommand</c>, que é
+    /// assinatura conhecida de código malicioso sem arquivo: num parque com EDR isso gera
+    /// alerta e pode ser bloqueado, e o bloqueio se disfarçava de "nenhum pendrive
+    /// encontrado" porque qualquer falha virava lista vazia.
     /// </summary>
-    public static async Task<List<UsbDisco>> ListarAsync(CancellationToken ct = default)
-    {
-        // Get-Disk (módulo Storage) traz IsSystem/IsBoot prontos; montar isso por WMI
-        // daria a mesma coisa com mais chance de erro de interpretação.
-        var saida = await PowerShellAsync(ScriptListagem, ct);
-        if (string.IsNullOrWhiteSpace(saida)) return new List<UsbDisco>();
-
-        try
-        {
-            return JsonSerializer.Deserialize<List<UsbDisco>>(saida,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<UsbDisco>();
-        }
-        catch
-        {
-            return new List<UsbDisco>();
-        }
-    }
+    public static Task<ResultadoListagem> ListarAsync(CancellationToken ct = default) =>
+        UsbConsulta.ListarAsync(ct);
 
     // ------------------------------------------------------------------ conferência
 
@@ -135,43 +95,8 @@ public sealed class UsbWriter
     /// pendrive pode ter sido trocado por outro — e o número do disco é reaproveitado.
     /// Gravar com base no objeto antigo é como formatar por um retrato.
     /// </summary>
-    public static async Task<(bool ok, string? motivo)> Conferir(UsbDisco alvo, CancellationToken ct = default)
-    {
-        if (alvo.Numero == 0)
-            return (false, "Disco 0 é o disco do sistema nesta máquina. Recusado.");
-
-        var ps = $$"""
-            $ErrorActionPreference = 'Stop'
-            $d = Get-Disk -Number {{alvo.Numero}} -ErrorAction SilentlyContinue
-            if (-not $d) { 'AUSENTE'; exit }
-            if ($d.IsSystem) { 'SISTEMA'; exit }
-            if ($d.IsBoot) { 'ARRANQUE'; exit }
-            if ($d.BusType -notin @('USB','SD')) { 'BARRAMENTO:' + $d.BusType; exit }
-            'OK:' + $d.FriendlyName + '|' + $d.Size
-            """;
-
-        var r = (await PowerShellAsync(ps, ct)).Trim();
-
-        if (r.StartsWith("AUSENTE", StringComparison.Ordinal))
-            return (false, $"O disco {alvo.Numero} não está mais presente. Reconecte o pendrive e escolha de novo.");
-        if (r.StartsWith("SISTEMA", StringComparison.Ordinal) || r.StartsWith("ARRANQUE", StringComparison.Ordinal))
-            return (false, $"O disco {alvo.Numero} agora é o disco do sistema. Recusado.");
-        if (r.StartsWith("BARRAMENTO:", StringComparison.Ordinal))
-            return (false, $"O disco {alvo.Numero} não é removível (barramento {r[11..]}). Recusado.");
-        if (!r.StartsWith("OK:", StringComparison.Ordinal))
-            return (false, $"Não consegui confirmar o disco {alvo.Numero}. Nada foi gravado.");
-
-        // O modelo E o tamanho precisam bater com o que foi escolhido: se o pendrive foi
-        // trocado por outro, o número pode ser o mesmo, o conteúdo não.
-        var partes = r[3..].Split('|');
-        if (partes.Length == 2
-            && (!string.Equals(partes[0].Trim(), alvo.Nome, StringComparison.OrdinalIgnoreCase)
-                || (long.TryParse(partes[1], out var bytes) && bytes != alvo.Bytes)))
-            return (false, $"O disco {alvo.Numero} não é mais o mesmo que você escolheu "
-                         + $"(agora: {partes[0].Trim()}). Escolha de novo.");
-
-        return (true, null);
-    }
+    public static Task<(bool ok, string? motivo)> Conferir(UsbDisco alvo, CancellationToken ct = default) =>
+        UsbConsulta.ConferirAsync(alvo, ct);
 
     // ------------------------------------------------------------------ gravação
 
@@ -195,8 +120,8 @@ public sealed class UsbWriter
         if (!EhAdministrador())
             throw new InvalidOperationException(
                 "Gravar no pendrive exige Administrador (particionar e formatar são operações "
-                + "privilegiadas). Feche o IsoForge e reabra com o botão direito → Executar como "
-                + "administrador.");
+                + "privilegiadas). Volte à tela anterior e clique em Gravar de novo — o IsoForge "
+                + "pede a elevação sozinho.");
 
         var (ok, motivo) = await Conferir(alvo, ct);
         if (!ok) throw new InvalidOperationException("Gravação cancelada: " + motivo);
@@ -327,14 +252,40 @@ public sealed class UsbWriter
         new DirectoryInfo(pasta).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length)
         / 1024.0 / 1024.0 / 1024.0;
 
-    static Task<string> PowerShellAsync(string script, CancellationToken ct, Action<string>? aoVivo = null)
+    /// <summary>
+    /// Roda um script PowerShell gravando-o num arquivo e passando o caminho com
+    /// <c>-File</c>.
+    ///
+    /// NÃO É -EncodedCommand, e a diferença importa. Base64 na linha de comando resolvia o
+    /// escape de aspas e quebras de linha, mas
+    /// <c>powershell -ExecutionPolicy Bypass -EncodedCommand &lt;b64&gt;</c> é a assinatura
+    /// catalogada de código malicioso sem arquivo: num parque com EDR isso gera alerta e
+    /// pode ser bloqueado — e este caminho roda ELEVADO, que é justamente onde um bloqueio
+    /// dói mais. Com um arquivo, quem for investigar lê o que o programa mandou executar.
+    ///
+    /// O caminho do arquivo vai para o log, de propósito: se o antivírus reclamar, a pessoa
+    /// tem o que mostrar para a TI.
+    /// </summary>
+    static async Task<string> PowerShellAsync(string script, CancellationToken ct, Action<string>? aoVivo = null)
     {
-        // O script vai por -EncodedCommand: assim aspas, cifrões e quebras de linha
-        // atravessam a linha de comando sem escape, que é onde este tipo de código
-        // costuma quebrar.
-        var b64 = Convert.ToBase64String(Encoding.Unicode.GetBytes(script));
-        return CapturarAsync("powershell.exe",
-            $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {b64}", ct, aoVivo);
+        var pasta = Path.Combine(Path.GetTempPath(), "IsoForge");
+        Directory.CreateDirectory(pasta);
+        var arquivo = Path.Combine(pasta, $"pendrive-{DateTime.Now:yyyyMMdd-HHmmss}.ps1");
+
+        // BOM em UTF-8: sem ele o PowerShell 5.1 lê o arquivo como ANSI e qualquer acento
+        // dentro do script vira outro caractere.
+        await File.WriteAllTextAsync(arquivo, script, new UTF8Encoding(true), ct);
+        aoVivo?.Invoke($"script: {arquivo}");
+
+        try
+        {
+            return await CapturarAsync("powershell.exe",
+                $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"{arquivo}\"", ct, aoVivo);
+        }
+        finally
+        {
+            try { File.Delete(arquivo); } catch { /* melhor esforço */ }
+        }
     }
 
     static async Task<string> CapturarAsync(string exe, string args, CancellationToken ct, Action<string>? aoVivo)

@@ -91,12 +91,14 @@ if (args.Length > 0 && args[0] == "--odt")
 //    dotnet run --project SmokeTest -- --usb
 if (args.Length > 0 && args[0] == "--usb")
 {
-    var discos = await UsbWriter.ListarAsync();
+    var r = await UsbWriter.ListarAsync();
+    var (titulo, detalhe, ehErro) = UsbConsulta.Mensagem(r);
     Console.WriteLine($"administrador: {UsbWriter.EhAdministrador()}");
-    Console.WriteLine($"discos graváveis: {discos.Count}");
-    foreach (var d in discos) Console.WriteLine("  " + d.Rotulo);
-    if (discos.Count == 0)
-        Console.WriteLine("  (nenhum. Conecte um pendrive — discos de sistema nunca aparecem aqui.)");
+    Console.WriteLine($"falha: {r.Falha}");
+    Console.WriteLine($"{(ehErro ? "ERRO" : "estado")}: {titulo}");
+    Console.WriteLine($"discos graváveis: {r.Discos.Count}");
+    foreach (var d in r.Discos) Console.WriteLine("  " + d.Rotulo);
+    if (!string.IsNullOrWhiteSpace(detalhe)) Console.WriteLine(detalhe);
     return 0;
 }
 
@@ -1419,37 +1421,134 @@ ao\existe" };
 }
 
 // ---------------------------------------------------------------- gravacao em pendrive
-// Aqui um erro nao da tela errada: apaga o disco de alguem. Por isso as travas sao
-// verificadas no texto do script alem do comportamento — se alguem tirar um -not
-// $_.IsSystem numa refatoracao, a suite para.
+// Aqui um erro nao da tela errada: apaga o disco de alguem.
+//
+// Antes estas afirmacoes liam o TEXTO de um script PowerShell, procurando por
+// "-not $_.IsSystem". Isso testava ortografia. Agora a trava e uma funcao pura, e o
+// teste e uma tabela de discos fabricados: nenhum disco de verdade por perto, e o que
+// se afirma e o COMPORTAMENTO.
 {
-    var s = UsbWriter.ScriptListagem;
-    Check(s.Contains("-not $_.IsSystem"), "pendrive: o disco do SISTEMA nunca entra na lista");
-    Check(s.Contains("-not $_.IsBoot"), "pendrive: o disco de ARRANQUE nunca entra na lista");
-    Check(s.Contains("$_.BusType -in @('USB','SD')"), "pendrive: so barramento removivel entra na lista");
+    // (barramento, sistema, arranque, arrancaPorEle, numero, tamanho, deveriaPassar, descricao)
+    var casos = new (ushort? bus, bool? sis, bool? arr, bool? porEle, uint? num, ulong? tam, bool passa, string oque)[]
+    {
+        (7,  false, false, false, 2, 32_000_000_000, true,  "pendrive USB comum passa"),
+        (12, false, false, false, 3,  8_000_000_000, true,  "cartao SD passa"),
 
-    // -AsArray so existe no PowerShell 7; o app chama powershell.exe, que e o 5.1.
-    // Com ele o script falhava inteiro e a lista vinha SEMPRE vazia — o recurso nunca
-    // achava pendrive nenhum.
-    Check(!s.Contains("-AsArray"), "pendrive: sem -AsArray (nao existe no PowerShell 5.1 que o app executa)");
-    Check(s.Contains("$lista.Count -eq 1"),
-          "pendrive: um unico pendrive tambem sai como ARRAY (o ConvertTo-Json do 5.1 devolveria objeto)");
+        (7,  true,  false, false, 2, 32_000_000_000, false, "disco de SISTEMA nunca entra, nem em USB"),
+        (7,  false, true,  false, 2, 32_000_000_000, false, "disco de ARRANQUE nunca entra, nem em USB"),
+        (7,  false, false, true,  2, 32_000_000_000, false, "disco pelo qual a maquina arranca nunca entra"),
+        (7,  false, false, false, 0, 32_000_000_000, false, "disco 0 nunca entra"),
 
-    // A saida real medida nesta maquina com um pendrive conectado.
-    var json = "[{\"Numero\":1,\"Nome\":\"USB SanDisk 3.2Gen1\",\"Bytes\":30784094208,\"Barramento\":\"USB\",\"Letras\":\"D:\"}]";
-    var discos = System.Text.Json.JsonSerializer.Deserialize<List<UsbDisco>>(json,
-        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-    Check(discos.Count == 1 && discos[0].Numero == 1 && discos[0].Bytes == 30784094208L,
-          "pendrive: a saida real do script vira UsbDisco");
-    Check(discos[0].Rotulo.Contains("SanDisk") && discos[0].Rotulo.Contains("28,7") || discos[0].Rotulo.Contains("28.7"),
-          "pendrive: o rotulo mostra modelo e tamanho (e o que a pessoa le antes de apagar)");
-    Check(discos[0].Rotulo.Contains("D:"), "pendrive: o rotulo mostra a letra montada (ajuda a reconhecer o certo)");
+        (17, false, false, false, 1, 512_000_000_000, false, "NVMe interno nao entra"),
+        (11, false, false, false, 1, 512_000_000_000, false, "SATA interno nao entra"),
+        (1,  false, false, false, 4,  32_000_000_000, false, "SCSI nao entra (gaveta USB que se declara SCSI fica de fora)"),
+        (0,  false, false, false, 4,  32_000_000_000, false, "barramento desconhecido nao entra (lista branca, nao lista negra)"),
+        (14, false, false, false, 4,  32_000_000_000, false, "disco virtual nao entra"),
+        (16, false, false, false, 4,  32_000_000_000, false, "Storage Spaces nao entra"),
+
+        (null, false, false, false, 2, 32_000_000_000, false, "sem barramento informado, recusa"),
+        (7,  null,  false, false, 2, 32_000_000_000, false, "sem saber se e o disco de sistema, recusa"),
+        (7,  false, null,  false, 2, 32_000_000_000, false, "sem saber se e o disco de arranque, recusa"),
+        (7,  false, false, false, null, 32_000_000_000, false, "sem numero de disco, recusa"),
+        (7,  false, false, false, 2, null, false, "sem tamanho informado, recusa"),
+        (7,  false, false, false, 2, 0,    false, "tamanho zero (leitor vazio), recusa"),
+    };
+
+    var erros = 0;
+    foreach (var c in casos)
+    {
+        var motivo = TravaDisco.MotivoDeRecusa(c.bus, c.sis, c.arr, c.porEle, c.num, c.tam);
+        var passou = motivo == null;
+        if (passou != c.passa) { erros++; Console.WriteLine($"       caso: {c.oque} -> motivo={motivo ?? "(passou)"}"); }
+        Check(passou == c.passa, "trava do pendrive: " + c.oque);
+        // Recusa sem motivo escrito e recusa que a pessoa nao consegue entender.
+        if (!c.passa) Check(!string.IsNullOrWhiteSpace(motivo), "trava do pendrive: a recusa vem com motivo — " + c.oque);
+    }
+    Check(erros == 0, "trava do pendrive: a tabela inteira bate");
+
+    // A lista e BRANCA: percorrer todos os barramentos conhecidos e conferir que so
+    // dois passam protege contra alguem trocar o filtro por uma lista de exclusoes.
+    var aceitos = new List<ushort>();
+    for (ushort bus = 0; bus <= 20; bus++)
+        if (TravaDisco.MotivoDeRecusa(bus, false, false, false, 2, 32_000_000_000) == null)
+            aceitos.Add(bus);
+    Check(aceitos.Count == 2 && aceitos.Contains(TravaDisco.BusUsb) && aceitos.Contains(TravaDisco.BusSd),
+          "trava do pendrive: de 0 a 20, SO o USB (7) e o SD (12) sao aceitos");
+
+    // O nome do barramento e a ultima coisa que a pessoa le antes de apagar o disco:
+    // ele nao pode dizer "USB" so porque passou pelo filtro.
+    Check(TravaDisco.NomeBarramento(17) == "NVMe" && TravaDisco.NomeBarramento(11) == "SATA",
+          "trava do pendrive: o nome do barramento e o de verdade, nao o do filtro");
 
     // Disco 0 e recusado sem nem consultar o sistema.
-    var zero = new UsbDisco(0, "qualquer", 1000, "USB", "");
+    var zero = new UsbDisco(0, "qualquer", 1000, "USB", "", FonteDisco.MsftDisk);
     var (ok0, motivo0) = UsbWriter.Conferir(zero).GetAwaiter().GetResult();
     Check(!ok0 && motivo0 != null && motivo0.Contains("sistema"),
           "pendrive: disco 0 e recusado de saida, sem consultar nada");
+
+    // Um UsbDisco fabricado a mao (sem passar pela consulta) nao chega a gravacao.
+    var forjado = new UsbDisco(2, "inventado", 1000, "USB", "");
+    var (okF, motivoF) = UsbWriter.Conferir(forjado).GetAwaiter().GetResult();
+    Check(!okF && motivoF != null, "pendrive: disco que nao veio da consulta e recusado");
+
+    // ---------------------------------------------------------- mensagens da tela
+    // O defeito relatado foi este: falha de permissao lida como "nao tem pendrive".
+    // A frase so pode aparecer quando ela e verdade.
+    const string SemPendrive = "Nenhum pendrive encontrado";
+
+    var vazioDeVerdade = ResultadoListagem.Ok(new(), new());
+    Check(UsbConsulta.Mensagem(vazioDeVerdade).titulo.Contains(SemPendrive),
+          "tela: sem disco nenhum, diz que nao encontrou pendrive");
+    Check(!UsbConsulta.Mensagem(vazioDeVerdade).ehErro, "tela: nao encontrar pendrive nao e erro");
+
+    var negado = ResultadoListagem.Erro(FalhaListagem.PermissaoNegada,
+        "O Windows negou acesso às informações de disco para este usuário.", "ManagementException: acesso negado");
+    var (tNegado, dNegado, eNegado) = UsbConsulta.Mensagem(negado);
+    Check(!tNegado.Contains(SemPendrive), "tela: permissao negada NAO se disfarca de falta de pendrive");
+    Check(eNegado, "tela: permissao negada e tratada como erro");
+    Check(dNegado != null && dNegado.Contains("ManagementException"),
+          "tela: o texto bruto do erro fica disponivel para mandar para a TI");
+
+    var provedor = ResultadoListagem.Erro(FalhaListagem.ProvedorIndisponivel, "O Windows nao respondeu.", "detalhe");
+    Check(!UsbConsulta.Mensagem(provedor).titulo.Contains(SemPendrive),
+          "tela: provedor indisponivel NAO se disfarca de falta de pendrive");
+
+    // Vi discos e nenhum serve: este era o caso indistinguivel de "nao tem pendrive".
+    var soRecusados = ResultadoListagem.Ok(new(), new()
+    {
+        new DiscoRecusado(1, "Samsung SSD 980", 512_000_000_000, "barramento NVMe — só USB e SD entram na lista"),
+        new DiscoRecusado(2, "Kingston DataTraveler", 64_000_000_000, "barramento SCSI — só USB e SD entram na lista"),
+    });
+    var (tRec, dRec, eRec) = UsbConsulta.Mensagem(soRecusados);
+    Check(!tRec.Contains(SemPendrive), "tela: vi discos e nenhum serve NAO vira 'nenhum pendrive encontrado'");
+    Check(tRec.Contains("2"), "tela: diz quantos discos foram vistos");
+    Check(dRec != null && dRec.Contains("Kingston") && dRec.Contains("SCSI"),
+          "tela: diz QUAL disco foi recusado e POR QUE (e o que resolve o chamado)");
+
+    var achou = ResultadoListagem.Ok(
+        new() { new UsbDisco(2, "SanDisk", 32_000_000_000, "USB", "D:", FonteDisco.MsftDisk) },
+        new() { new DiscoRecusado(1, "SSD interno", 512_000_000_000, "é o disco de SISTEMA") });
+    var (tAchou, dAchou, eAchou) = UsbConsulta.Mensagem(achou);
+    Check(!eAchou && tAchou.Contains("1 disco"), "tela: achou um pendrive e diz isso");
+    Check(dAchou != null && dAchou.Contains("SISTEMA"),
+          "tela: mesmo achando, explica por que os outros discos nao aparecem");
+
+    // ------------------------------------------------------------------ elevacao
+    Check(Elevacao.Citar(@"C:\Uma Pasta\saida.iso") == "\"C:\\Uma Pasta\\saida.iso\"",
+          "elevacao: caminho com espaco sai entre aspas");
+    Check(Elevacao.Citar(@"C:\pasta\") == "\"C:\\pasta\\\\\"",
+          "elevacao: barra final e duplicada (senao ela escaparia a aspa de fechamento)");
+    Check(!Elevacao.DicaDeIsoValida("saida.iso"), "elevacao: caminho relativo nao e aceito como dica");
+    Check(!Elevacao.DicaDeIsoValida(@"C:\qualquer\coisa.exe"), "elevacao: so .iso e aceito como dica");
+    Check(!Elevacao.DicaDeIsoValida(null), "elevacao: sem dica, nao ha dica");
+    Check(!Elevacao.DicaDeIsoValida(@"C:\nao\existe\mesmo-" + Guid.NewGuid().ToString("N") + ".iso"),
+          "elevacao: arquivo inexistente nao e aceito como dica");
+
+    // A configuracao nunca vai na linha de comando: ela tem senha de conta, PSK de WiFi e
+    // senha de LUKS, e linha de comando fica na telemetria do antivirus para sempre.
+    var argElevacao = "--pendrive " + Elevacao.Citar(@"C:\saida\imagem.iso");
+    Check(argElevacao.StartsWith("--pendrive ") && argElevacao.Count(ch => ch == ' ') == 1,
+          "elevacao: o argumento e so a chave e um caminho — nada de configuracao junto");
 }
 
 // ---------------------------------------------------------------- Sandbox sem rede

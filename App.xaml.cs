@@ -6,10 +6,24 @@ namespace IsoForge;
 
 public partial class App : Application
 {
+    /// <summary>
+    /// Esta instância está fechando para dar lugar a outra, elevada. Não é um encerramento
+    /// comum: a limpeza de cache e o salvamento da configuração ficam desligados, porque
+    /// senão esta instância apagaria os arquivos de trabalho DEBAIXO da que acabou de
+    /// nascer, e as duas escreveriam o settings.dat ao mesmo tempo.
+    /// </summary>
+    public static bool EntregandoBastao;
+
+    /// <summary>Iniciado com --pendrive: veio de uma elevação pedida pela tela de gravação.</summary>
+    public static bool ModoPendrive;
+
+    /// <summary>ISO que a instância anterior estava prestes a gravar. É uma DICA, nunca autorização.</summary>
+    public static string? IsoParaGravar;
+
     // Ao fechar o app, limpa o cache (drivers baixados + pastas de trabalho). A ISO gerada fica.
     protected override void OnExit(ExitEventArgs e)
     {
-        CacheCleaner.Clean();
+        if (!EntregandoBastao) CacheCleaner.Clean();
         base.OnExit(e);
     }
 
@@ -176,6 +190,21 @@ public partial class App : Application
         // Liga o extrator de icones no pipeline. Ver IsoPipeline.ExtratorDeIcones:
         // e um ponto de extensao porque o projeto de teste compila o pipeline sem WPF.
         IsoForge.Core.IsoPipeline.ExtratorDeIcones = IsoForge.Core.AppIconExtractor.Extract;
+
+        // Reaberto como administrador só para gravar o pendrive. O argumento seguinte, se
+        // houver, é o caminho da ISO — validado aqui porque vem de fora do processo e, num
+        // processo elevado, todo dado de fora é suspeito até prova em contrário.
+        var iPendrive = Array.FindIndex(e.Args, a => a.Equals("--pendrive", StringComparison.OrdinalIgnoreCase));
+        if (iPendrive >= 0)
+        {
+            ModoPendrive = true;
+            // Nada é gravado no perfil desta instância: ela pode estar rodando sob a conta
+            // de administrador da TI, e não sob a conta de quem preencheu a tela.
+            SettingsStore.SomenteLeitura = true;
+
+            var dica = iPendrive + 1 < e.Args.Length ? e.Args[iPendrive + 1] : null;
+            if (Elevacao.DicaDeIsoValida(dica)) IsoParaGravar = Path.GetFullPath(dica!);
+        }
 
         ThemeService.Apply(SettingsStore.Load()?.AppDarkTheme ?? false);
         new MainWindow().Show();

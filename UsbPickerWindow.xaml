@@ -32,6 +32,32 @@
                        Foreground="{StaticResource TextMuted}" FontSize="12"/>
         </DockPanel>
 
+        <!--
+            Canal de erro de verdade. O TxtVazio acima e uma linha pequena e apagada ao lado
+            de um botao: serve para "achei 2 discos", nao para explicar que o Windows negou
+            acesso. Sem isto, falha de permissao e ausencia de pendrive liam igual.
+        -->
+        <Border x:Name="PainelFalha" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14"
+                BorderBrush="{StaticResource WarnBorder}" Background="{StaticResource WarnBg}"
+                Visibility="Collapsed">
+            <StackPanel>
+                <TextBlock x:Name="TxtFalha" TextWrapping="Wrap" FontWeight="SemiBold"
+                           Foreground="{StaticResource WarnText}"/>
+                <TextBlock x:Name="TxtFalhaDetalhe" TextWrapping="Wrap" Margin="0,8,0,0" FontSize="11.5"
+                           FontFamily="Consolas" Foreground="{StaticResource WarnText}"
+                           Visibility="Collapsed"/>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button x:Name="BtnDetalhes" Content="Ver detalhes" Style="{StaticResource Secondary}"
+                            Padding="10,5" Margin="0,0,8,0" Visibility="Collapsed" Click="Detalhes_Click"/>
+                    <Button x:Name="BtnCopiar" Content="Copiar" Style="{StaticResource Secondary}"
+                            Padding="10,5" Margin="0,0,8,0" Visibility="Collapsed" Click="Copiar_Click"/>
+                    <Button x:Name="BtnElevarListar" Content="Tentar como administrador"
+                            Style="{StaticResource Secondary}" Padding="10,5" Visibility="Collapsed"
+                            Click="Elevar_Click"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
         <Border x:Name="AvisoApaga" BorderThickness="1" CornerRadius="8" Padding="14,12" Margin="0,0,0,14"
                 BorderBrush="{StaticResource CardBorder}" Background="{StaticResource CardBg}"
                 Visibility="Collapsed">
@@ -46,7 +72,7 @@
 
         <TextBlock x:Name="TxtAdmin" TextWrapping="Wrap" Margin="0,0,0,12" FontSize="12.5"
                    Visibility="Collapsed"
-                   Text="Gravar exige Administrador: particionar e formatar são operações privilegiadas. Feche o IsoForge e reabra com o botão direito → Executar como administrador."/>
+                   Text="Gravar exige Administrador: particionar e formatar são operações privilegiadas. Ao clicar em Gravar no pendrive, o Windows vai pedir sua confirmação."/>
 
         <DockPanel>
             <Button DockPanel.Dock="Right" x:Name="BtnGravar" Content="Gravar no pendrive"

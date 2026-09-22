@@ -38,8 +38,23 @@ public static class SettingsStore
 
     static readonly JsonSerializerOptions Opts = new() { WriteIndented = true };
 
+    /// <summary>
+    /// Quando ligado, nada é gravado — só lido.
+    ///
+    /// Existe por causa da instância que o IsoForge abre elevada para gravar o pendrive.
+    /// Se a pessoa elevar com OUTRA conta (usuário comum + conta de administrador da TI,
+    /// o arranjo normal num parque corporativo), o %APPDATA% é outro: a configuração vem
+    /// vazia, a pessoa reenche tudo — inclusive senhas — e o salvamento automático as
+    /// gravaria no perfil da conta de administrador, cifradas com a DPAPI dela, ao alcance
+    /// de qualquer um que faça logon nessa conta e viajando em backup e perfil móvel.
+    /// Com a escrita desligada, o pior caso vira "a tela veio em branco": visível, e sem
+    /// deixar rastro no lugar errado.
+    /// </summary>
+    public static bool SomenteLeitura { get; set; }
+
     public static void Save(BuildConfig c)
     {
+        if (SomenteLeitura) return;
         try
         {
             Directory.CreateDirectory(Dir);
@@ -91,6 +106,7 @@ public static class SettingsStore
 
     public static void SaveProfile(string name, BuildConfig c)
     {
+        if (SomenteLeitura) return;
         try
         {
             Directory.CreateDirectory(ProfilesDir);

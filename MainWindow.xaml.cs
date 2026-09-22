@@ -78,8 +78,25 @@ public partial class MainWindow : Window
         RefreshAppCards();
         UpdateUnitPreview();
 
-        // Salva ao fechar — garante que nada preenchido se perca.
-        Closing += (_, __) => { try { CollectConfig(); } catch { } };
+        // Salva ao fechar — garante que nada preenchido se perca. Menos quando esta
+        // instância está fechando para dar lugar a uma elevada: aí as duas escreveriam o
+        // mesmo settings.dat ao mesmo tempo, e a gravação não é atômica — um arquivo
+        // truncado faria a configuração inteira, senhas inclusive, voltar ao padrão.
+        Closing += (_, __) => { if (App.EntregandoBastao) return; try { CollectConfig(); } catch { } };
+
+        // Reaberto como administrador vindo da tela de pendrive: retoma de onde parou.
+        if (App.ModoPendrive)
+            Loaded += async (_, __) =>
+            {
+                try
+                {
+                    if (App.IsoParaGravar != null)
+                        await OfereceGravarPendriveAsync(App.IsoParaGravar, reaberto: true);
+                    else
+                        BuildUsb_Click(this, new RoutedEventArgs());
+                }
+                catch (Exception ex) { Caixa.Erro(this, "Não consegui retomar a gravação", ex.Message); }
+            };
 
         // Reflete os apps escolhidos em outras telas.
         _config.Apps.CollectionChanged += (_, __) => Dispatcher.Invoke(() => { /* IMAGEM GOLDEN (DESATIVADA): UpdateGoldenSummary(); */ UpdateDynamicConfigCards(); });
@@ -1554,19 +1571,35 @@ public partial class MainWindow : Window
     /// Grava a ISO JÁ GERADA (monta e copia); não refaz o provisionamento, que produziria
     /// exatamente os mesmos arquivos em mais 20 minutos.
     /// </summary>
-    async Task OfereceGravarPendriveAsync(string isoPath)
+    async Task OfereceGravarPendriveAsync(string isoPath, bool reaberto = false)
     {
         var gb = 0.0;
         try { gb = new FileInfo(isoPath).Length / 1024.0 / 1024.0 / 1024.0; } catch { }
 
-        var r = Caixa.Perguntar(this, "ISO gerada com sucesso",
-            $"A imagem está em {isoPath}" + (gb > 0 ? $" ({gb:F2} GB)." : ".") +
-            "\n\nPosso prepará-la agora num pendrive inicializável. O conteúdo do pendrive será apagado.",
-            rotuloSim: "Gravar em pendrive", rotuloNao: "Agora não", tipo: TipoCaixa.Sucesso);
+        var r = reaberto
+            // Reaberto como administrador: a pessoa já disse que queria gravar. O caminho
+            // aparece por extenso porque veio de fora do processo — ela confirma O QUE vai
+            // ser gravado, e não um "sim" genérico.
+            ? Caixa.Perguntar(this, "IsoForge reaberto como administrador",
+                $"Continuar a gravação desta imagem?\n\n{isoPath}" + (gb > 0 ? $"\n({gb:F2} GB)" : ""),
+                rotuloSim: "Escolher o pendrive", rotuloNao: "Agora não")
+            : Caixa.Perguntar(this, "ISO gerada com sucesso",
+                $"A imagem está em {isoPath}" + (gb > 0 ? $" ({gb:F2} GB)." : ".") +
+                "\n\nPosso prepará-la agora num pendrive inicializável. O conteúdo do pendrive será apagado.",
+                rotuloSim: "Gravar em pendrive", rotuloNao: "Agora não", tipo: TipoCaixa.Sucesso);
         if (r != MessageBoxResult.Yes) return;
 
         var escolha = new UsbPickerWindow { Owner = this };
-        if (escolha.ShowDialog() != true || escolha.Escolhido is not { } alvo) return;
+        escolha.ShowDialog();
+
+        if (escolha.PediuElevacao)
+        {
+            // A ISO já existe em disco: o caminho dela é a única coisa que atravessa para a
+            // instância elevada, e como dica — ela reapresenta a escolha do pendrive.
+            await EntregarBastaoAsync($"--pendrive {Elevacao.Citar(Path.GetFullPath(isoPath))}");
+            return;
+        }
+        if (escolha.Escolhido is not { } alvo) return;
 
         SetBusy(true);
         _cts = new CancellationTokenSource();
@@ -1596,6 +1629,69 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Reabre o IsoForge como administrador e encerra esta instância.
+    ///
+    /// Particionar e formatar são operações privilegiadas: não há como o processo atual
+    /// ganhar esse direito depois de nascer. Em vez de mandar a pessoa fechar e reabrir com
+    /// o botão direito — que é o programa sabendo o que fazer e pedindo que o façam por ele
+    /// —, o IsoForge se relança.
+    /// </summary>
+    async Task EntregarBastaoAsync(string argumentos)
+    {
+        // Já viemos de uma elevação e ainda não somos administrador: relançar de novo só
+        // repetiria o aviso do Windows sem fim. Melhor dizer o que aconteceu.
+        if (App.ModoPendrive && !UsbWriter.EhAdministrador())
+        {
+            Caixa.Erro(this, "A elevação não pegou",
+                "O IsoForge foi reaberto para pedir permissão de administrador, mas continua "
+                + "sem ela. Isso costuma ser política da máquina.\n\n"
+                + "Fale com quem administra o computador, ou abra o IsoForge com o botão "
+                + "direito → Executar como administrador.");
+            return;
+        }
+
+        // Nunca entregue o bastão com trabalho em andamento: encerrar aqui mataria a thread
+        // no meio, e um pendrive gravado pela metade não avisa que está pela metade.
+        if (_ocupado)
+        {
+            Caixa.Avisar(this, "Há uma tarefa em andamento",
+                "Espere ela terminar (ou cancele) antes de reabrir como administrador.");
+            return;
+        }
+
+        // A configuração precisa estar em disco ANTES de fechar: é por ela, cifrada, que a
+        // instância elevada recebe o que estava preenchido na tela.
+        try { CollectConfig(); } catch { /* melhor esforço: não impedir a elevação */ }
+
+        var (resultado, erro) = Elevacao.Relancar(argumentos);
+        switch (resultado)
+        {
+            case ResultadoElevacao.UsuarioRecusou:
+                // Recusar o aviso do Windows é escolha, não falha. A janela continua viva.
+                Caixa.Informar(this, "Sem permissão de administrador",
+                    "Sem administrador não dá para particionar nem formatar o pendrive.\n\n"
+                    + "A tela continua como estava — você pode tentar de novo quando quiser.");
+                return;
+
+            case ResultadoElevacao.SemCaminho:
+                Caixa.Erro(this, "Não consegui identificar o executável do IsoForge",
+                    "Abra o IsoForge com o botão direito → Executar como administrador.");
+                return;
+
+            case ResultadoElevacao.Falhou:
+                Caixa.Erro(this, "Não consegui reabrir como administrador",
+                    "Abra o IsoForge com o botão direito → Executar como administrador.", erro);
+                return;
+        }
+
+        // Só depois de a nova instância ter nascido é que esta sai — e sai sem limpar o
+        // cache nem regravar a configuração, que a outra já está usando.
+        App.EntregandoBastao = true;
+        await Task.Yield();
+        Application.Current.Shutdown();
+    }
+
+    /// <summary>
     /// Grava direto no pendrive, sem gerar .iso. Mesmo pipeline até a injeção dos
     /// arquivos; o que muda é o destino.
     /// </summary>
@@ -1615,7 +1711,16 @@ public partial class MainWindow : Window
         }
 
         var escolha = new UsbPickerWindow { Owner = this };
-        if (escolha.ShowDialog() != true || escolha.Escolhido is not { } alvo) return;
+        escolha.ShowDialog();
+
+        if (escolha.PediuElevacao)
+        {
+            // Sem caminho de ISO: aqui o pipeline inteiro ainda vai rodar, e a configuração
+            // viaja pelo settings.dat cifrado, nunca pela linha de comando.
+            await EntregarBastaoAsync("--pendrive");
+            return;
+        }
+        if (escolha.Escolhido is not { } alvo) return;
 
         SetBusy(true);
         _cts = new CancellationTokenSource();
@@ -1787,8 +1892,12 @@ public partial class MainWindow : Window
             AppendLog("A VM é criada com o Secure Boot no template da autoridade UEFI da Microsoft (exigido pelo Linux).");
     }
 
+    /// <summary>Há trabalho rodando. Quem precisa saber: a entrega do bastão para a instância elevada.</summary>
+    bool _ocupado;
+
     void SetBusy(bool busy)
     {
+        _ocupado = busy;
         BtnBuild.IsEnabled = !busy;
         BtnDryRun.IsEnabled = !busy;
         BtnTestScript.IsEnabled = !busy;

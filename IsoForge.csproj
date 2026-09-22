@@ -33,6 +33,13 @@
   <ItemGroup>
     <!-- Criptografia DPAPI da config local (settings.dat) -->
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!--
+      Consulta WMI no proprio processo, para listar os pendrives sem lancar powershell.exe.
+      A linha "powershell -ExecutionPolicy Bypass -EncodedCommand <base64>" que havia aqui
+      antes e assinatura catalogada de codigo malicioso sem arquivo: em maquina com EDR ela
+      gera alerta e pode ser bloqueada, e o bloqueio se disfarcava de "nenhum pendrive".
+    -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

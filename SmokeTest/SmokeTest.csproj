@@ -9,6 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- A consulta de discos usa WMI no proprio processo; a suite compila UsbWriter.cs. -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\Models\BuildConfig.cs" Link="Models\BuildConfig.cs" />
     <Compile Include="..\Models\TargetOs.cs" Link="Models\TargetOs.cs" />
     <Compile Include="..\Models\LinuxConfig.cs" Link="Models\LinuxConfig.cs" />
@@ -36,6 +41,8 @@
     <Compile Include="..\Core\DebloatGenerator.cs" Link="Core\DebloatGenerator.cs" />
     <Compile Include="..\Core\BloatCatalog.cs" Link="Core\BloatCatalog.cs" />
     <Compile Include="..\Core\UsbWriter.cs" Link="Core\UsbWriter.cs" />
+    <Compile Include="..\Core\UsbConsulta.cs" Link="Core\UsbConsulta.cs" />
+    <Compile Include="..\Core\Elevacao.cs" Link="Core\Elevacao.cs" />
     <Compile Include="..\Core\ReportGenerator.cs" Link="Core\ReportGenerator.cs" />
     <Compile Include="..\Core\DriverInfScanner.cs" Link="Core\DriverInfScanner.cs" />
     <Compile Include="..\Core\IDriverComponentCatalog.cs" Link="Core\IDriverComponentCatalog.cs" />
