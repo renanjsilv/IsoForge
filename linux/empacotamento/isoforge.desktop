@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=IsoForge
+GenericName=Personalizador de ISO
+Comment=Gera ISOs de instalação desassistida a partir da ISO oficial da distribuição
+Exec=isoforge
+Icon=isoforge
+Terminal=false
+Categories=System;Utility;
+Keywords=iso;instalacao;desassistida;pendrive;autoinstall;kickstart;preseed;
+StartupWMClass=isoforge

@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    IsoForge para Linux.
+
+    Mesmo núcleo do aplicativo do Windows — os arquivos de Core/ e Models/ entram aqui por
+    referência, não por cópia, e é o mesmo código que a suíte de testes valida. O que muda é
+    só a casca: o Windows usa WPF, que não existe fora dele; aqui é Avalonia.
+
+    O alvo é net8.0 (sem "-windows") de propósito: este projeto compila e roda em Linux,
+    e também em Windows e macOS, o que é o que torna possível olhar para a tela sem ter
+    uma máquina Linux à mão.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>isoforge</AssemblyName>
+    <RootNamespace>IsoForge.Linux</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <Version>1.0.0</Version>
+    <Authors>renanjsilv</Authors>
+    <Product>IsoForge - Personalizador de ISO (Linux)</Product>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Ativos\**" />
+  </ItemGroup>
+
+  <!-- Núcleo compartilhado: só os arquivos que não dependem do Windows. -->
+  <ItemGroup>
+    <Compile Include="..\Models\*.cs" LinkBase="Nucleo\Models" />
+    <Compile Include="..\Core\Linux\*.cs" LinkBase="Nucleo\Linux" />
+    <Compile Include="..\Core\Plataforma.cs" Link="Nucleo\Plataforma.cs" />
+    <Compile Include="..\Core\Cofre.cs" Link="Nucleo\Cofre.cs" />
+    <Compile Include="..\Core\IsoTools.cs" Link="Nucleo\IsoTools.cs" />
+    <Compile Include="..\Core\Oscdimg.cs" Link="Nucleo\Oscdimg.cs" />
+    <Compile Include="..\Core\SettingsStore.cs" Link="Nucleo\SettingsStore.cs" />
+    <Compile Include="..\Core\IsoInspector.cs" Link="Nucleo\IsoInspector.cs" />
+    <!-- Define o enum AppId usado pelo catálogo de aplicativos. -->
+    <Compile Include="..\Core\InstallerFetcher.cs" Link="Nucleo\InstallerFetcher.cs" />
+    <Compile Include="..\Core\AppPresets.cs" Link="Nucleo\AppPresets.cs" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+</Project>

@@ -1,0 +1,56 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="IsoForge.Linux.JanelaPendrive"
+        Title="Gravar em pendrive"
+        Width="620" Height="440" CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource FundoJanela}">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BordaCartao}"
+            BorderThickness="0,0,0,1" Padding="22,16">
+      <StackPanel Spacing="4">
+        <TextBlock Text="Gravar em pendrive" Classes="titulo"/>
+        <TextBlock x:Name="TxtIso" Classes="apagado"/>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Row="1" Margin="22,16">
+
+      <Border Classes="cartao">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0" Text="Pendrive de destino" Classes="cartaoTitulo"
+                       VerticalAlignment="Center"/>
+            <Button Grid.Column="1" x:Name="BtAtualizar" Content="Atualizar lista"/>
+          </Grid>
+          <ComboBox x:Name="ListaDiscos"/>
+          <TextBlock x:Name="TxtVazio" Classes="apagado"
+                     Text="Só aparecem discos removíveis. O disco do sistema nunca é listado."/>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="aviso">
+        <StackPanel Spacing="6">
+          <TextBlock Text="⚠ A gravação apaga o pendrive inteiro. Tudo que estiver nele é perdido, sem confirmação do sistema e sem lixeira."/>
+          <TextBlock x:Name="TxtComando" FontFamily="monospace" FontSize="11"/>
+        </StackPanel>
+      </Border>
+
+      <ProgressBar x:Name="Barra" Height="6" Minimum="0" Maximum="100" Margin="0,16,0,0"
+                   IsVisible="False"/>
+      <TextBlock x:Name="TxtEstado" Classes="apagado" Margin="0,8,0,0"/>
+
+    </StackPanel>
+
+    <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BordaCartao}"
+            BorderThickness="0,1,0,0" Padding="20,14">
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button x:Name="BtFechar" Content="Fechar"/>
+        <Button x:Name="BtGravar" Classes="primario" Content="Gravar"/>
+      </StackPanel>
+    </Border>
+
+  </Grid>
+</Window>

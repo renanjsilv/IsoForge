@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Suíte que roda NO LINUX. A suíte grande (SmokeTest/) valida a geração de texto e só roda
+    no Windows; esta aqui existe para provar o que só dá para provar do outro lado: que o
+    núcleo compila sem Windows, que o xorriso realmente produz uma ISO com o arquivo de
+    resposta dentro, e que o cofre da configuração funciona sem DPAPI.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>IsoForge.TesteLinux</RootNamespace>
+    <AssemblyName>teste-linux</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Models\*.cs" LinkBase="Nucleo\Models" />
+    <Compile Include="..\Core\Linux\*.cs" LinkBase="Nucleo\Linux" />
+    <Compile Include="..\Core\Plataforma.cs" Link="Nucleo\Plataforma.cs" />
+    <Compile Include="..\Core\Cofre.cs" Link="Nucleo\Cofre.cs" />
+    <Compile Include="..\Core\IsoTools.cs" Link="Nucleo\IsoTools.cs" />
+    <Compile Include="..\Core\Oscdimg.cs" Link="Nucleo\Oscdimg.cs" />
+    <Compile Include="..\Core\SettingsStore.cs" Link="Nucleo\SettingsStore.cs" />
+    <Compile Include="..\Core\IsoInspector.cs" Link="Nucleo\IsoInspector.cs" />
+    <Compile Include="..\Core\InstallerFetcher.cs" Link="Nucleo\InstallerFetcher.cs" />
+    <Compile Include="..\Core\AppPresets.cs" Link="Nucleo\AppPresets.cs" />
+  </ItemGroup>
+
+</Project>

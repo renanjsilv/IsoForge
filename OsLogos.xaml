@@ -1,0 +1,206 @@
+<!--
+    Logos dos sistemas operacionais desenhadas em vetor (nenhum arquivo de imagem externo).
+    Cada logo é branca sobre o selo na cor da marca, definido em OsInfo.Accent.
+    Todas usam a mesma caixa de 100x100 para ficarem visualmente do mesmo tamanho.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Windows 11: quatro painéis quadrados, alinhados. -->
+    <DrawingImage x:Key="Logo.windows11">
+        <DrawingImage.Drawing>
+            <GeometryDrawing Brush="White"
+                             Geometry="M8,8 H46 V46 H8 Z M54,8 H92 V46 H54 Z M8,54 H46 V92 H8 Z M54,54 H92 V92 H54 Z"/>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Windows 10: a bandeira em perspectiva (painéis inclinados). -->
+    <DrawingImage x:Key="Logo.windows10">
+        <DrawingImage.Drawing>
+            <GeometryDrawing Brush="White"
+                             Geometry="M6,21 L46,15 V47 H6 Z M52,14 L94,8 V47 H52 Z M6,53 H46 V85 L6,79 Z M52,53 H94 V92 L52,86 Z"/>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Ubuntu: o "círculo de amigos" — três pontos ligados por arcos do mesmo círculo. -->
+    <DrawingImage x:Key="Logo.ubuntu">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="White">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <EllipseGeometry Center="83,50" RadiusX="11.5" RadiusY="11.5"/>
+                            <EllipseGeometry Center="33.5,21.4" RadiusX="11.5" RadiusY="11.5"/>
+                            <EllipseGeometry Center="33.5,78.6" RadiusX="11.5" RadiusY="11.5"/>
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M50,50 m-33,0 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="9"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Ubuntu Server usa a mesma marca do Ubuntu. -->
+    <DrawingImage x:Key="Logo.ubuntu-server">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="White">
+                    <GeometryDrawing.Geometry>
+                        <GeometryGroup>
+                            <EllipseGeometry Center="83,50" RadiusX="11.5" RadiusY="11.5"/>
+                            <EllipseGeometry Center="33.5,21.4" RadiusX="11.5" RadiusY="11.5"/>
+                            <EllipseGeometry Center="33.5,78.6" RadiusX="11.5" RadiusY="11.5"/>
+                        </GeometryGroup>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M50,50 m-33,0 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="9"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Debian: a espiral ("swirl"). -->
+    <DrawingImage x:Key="Logo.debian">
+        <DrawingImage.Drawing>
+            <GeometryDrawing Geometry="M60,50 A12,12 0 0 0 50,35 A17,17 0 0 0 30,50 A22,22 0 0 0 50,75 A27,27 0 0 0 80,50 A32,32 0 0 0 50,16 A36,36 0 0 0 13,50">
+                <GeometryDrawing.Pen>
+                    <Pen Brush="White" Thickness="10" StartLineCap="Round" EndLineCap="Round"/>
+                </GeometryDrawing.Pen>
+            </GeometryDrawing>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Linux Mint: moldura arredondada com o "LM". -->
+    <DrawingImage x:Key="Logo.linuxmint">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Geometry="M22,12 H78 A10,10 0 0 1 88,22 V78 A10,10 0 0 1 78,88 H22 A10,10 0 0 1 12,78 V22 A10,10 0 0 1 22,12 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="7" LineJoin="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M28,32 V70 H44 M56,70 V40 L66,54 L76,40 V70">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="8" LineJoin="Round" StartLineCap="Round" EndLineCap="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Fedora: o "f" (haste com gancho e barra à esquerda) dentro do círculo. -->
+    <DrawingImage x:Key="Logo.fedora">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Geometry="M50,50 m-42,0 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="7"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Geometry="M46,82 V38 A16,16 0 0 1 62,22 L70,22 M28,52 H46">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="12" StartLineCap="Round" EndLineCap="Round" LineJoin="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Rocky Linux: a montanha dentro do hexágono. -->
+    <DrawingImage x:Key="Logo.rocky">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Geometry="M50,7 L87,28 V72 L50,93 L13,72 V28 Z">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="7" LineJoin="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="White" Geometry="M27,69 L45,38 L57,58 L64,47 L77,69 Z"/>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- AlmaLinux: o "A". -->
+    <DrawingImage x:Key="Logo.almalinux">
+        <DrawingImage.Drawing>
+            <GeometryDrawing Brush="White"
+                             Geometry="M50,10 L88,90 H70 L63,74 H37 L30,90 H12 Z M43,60 H57 L50,42 Z"/>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!--
+        openSUSE: a silhueta do camaleao (Geeko) de perfil — cabeca com focinho e crista,
+        corpo e cauda enrolada. Montada com uniao/subtracao de formas simples.
+    -->
+    <DrawingImage x:Key="Logo.opensuse">
+        <DrawingImage.Drawing>
+            <DrawingGroup>
+                <GeometryDrawing Brush="White">
+                    <GeometryDrawing.Geometry>
+                        <CombinedGeometry GeometryCombineMode="Exclude">
+                            <CombinedGeometry.Geometry1>
+                                <CombinedGeometry GeometryCombineMode="Union">
+                                    <CombinedGeometry.Geometry1>
+                                        <CombinedGeometry GeometryCombineMode="Union">
+                                            <CombinedGeometry.Geometry1>
+                                                <CombinedGeometry GeometryCombineMode="Union">
+                                                    <CombinedGeometry.Geometry1>
+                                                        <EllipseGeometry Center="26,40" RadiusX="15" RadiusY="13"/>
+                                                    </CombinedGeometry.Geometry1>
+                                                    <CombinedGeometry.Geometry2>
+                                                        <!-- focinho -->
+                                                        <PathGeometry Figures="M8,44 L20,34 L20,50 Z"/>
+                                                    </CombinedGeometry.Geometry2>
+                                                </CombinedGeometry>
+                                            </CombinedGeometry.Geometry1>
+                                            <CombinedGeometry.Geometry2>
+                                                <!-- crista -->
+                                                <PathGeometry Figures="M30,32 L38,14 L48,34 Z"/>
+                                            </CombinedGeometry.Geometry2>
+                                        </CombinedGeometry>
+                                    </CombinedGeometry.Geometry1>
+                                    <CombinedGeometry.Geometry2>
+                                        <!-- corpo -->
+                                        <EllipseGeometry Center="55,48" RadiusX="25" RadiusY="15"/>
+                                    </CombinedGeometry.Geometry2>
+                                </CombinedGeometry>
+                            </CombinedGeometry.Geometry1>
+                            <CombinedGeometry.Geometry2>
+                                <!-- olho vazado -->
+                                <EllipseGeometry Center="24,37" RadiusX="5" RadiusY="5"/>
+                            </CombinedGeometry.Geometry2>
+                        </CombinedGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <!-- cauda enrolada -->
+                <GeometryDrawing Geometry="M76,52 C90,52 96,63 91,73 C87,81 75,82 72,74 C69,67 76,62 80,67">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="8" StartLineCap="Round" EndLineCap="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+                <!-- patas -->
+                <GeometryDrawing Geometry="M42,60 L38,76 M66,60 L72,74">
+                    <GeometryDrawing.Pen>
+                        <Pen Brush="White" Thickness="8" StartLineCap="Round" EndLineCap="Round"/>
+                    </GeometryDrawing.Pen>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+    <!-- Arch Linux: o "A" em forma de montanha. -->
+    <DrawingImage x:Key="Logo.arch">
+        <DrawingImage.Drawing>
+            <GeometryDrawing Brush="White"
+                             Geometry="M50,6 L88,90 L68,90 L50,50 L32,90 L12,90 Z"/>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+
+</ResourceDictionary>

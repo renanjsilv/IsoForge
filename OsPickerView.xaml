@@ -1,0 +1,505 @@
+<UserControl x:Class="IsoForge.OsPickerView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Background="{DynamicResource WindowBg}"
+        Loaded="View_Loaded">
+
+    <!--
+        ============================================================================
+        TABULEIRO (v2)
+        ============================================================================
+        Uma tela só, do mesmo tema em toda a superfície — não duas metades grampeadas.
+
+          · FUNDO: <Control Style="AmbientSurface"> (Theme.xaml) ocupa a janela
+            inteira e se move nos dois lados. Arcos concêntricos gigantes girando
+            em torno de dois centros fora da tela, a 60–155 px/s.
+
+          · CABEÇALHO: a pergunta, sobre uma vinheta que protege o texto.
+
+          · TABULEIRO: quatro faixas de família empilhadas. Cada faixa divide a
+            LARGURA TODA entre os seus cartões (UniformGrid Rows=1) e as faixas
+            dividem a ALTURA TODA entre si (UniformGrid Columns=1). Por construção
+            o catálogo tem exatamente o tamanho do espaço disponível, em qualquer
+            resolução: não existe "ilha flutuando no vazio".
+
+          · TRILHO: a ficha técnica do sistema escolhido + os botões, largura total.
+
+        Cada cartão traz a sua própria descrição: dá para comparar as 11 distros
+        sem clicar em nenhuma.
+
+        Contraste: nenhum texto fica direto sobre o fundo animado — ou está num
+        cartão, ou numa placa (SurfacePlate), ou no trilho. Nenhum texto usa
+        Opacity: a cor vem sempre de um token com contraste medido.
+    -->
+
+    <UserControl.Resources>
+
+        <!-- ====================================================================
+             CARTÃO DO SISTEMA
+             Hover e seleção usam CANAIS DIFERENTES e força CONSTANTE:
+               hover    = relevo + anel NEUTRO (não depende do brilho da marca)
+               seleção  = tinta + anel na marca normalizada + selo + nome em negrito
+             Assim a seleção sempre grita mais alto que o hover, seja qual for a marca.
+             ==================================================================== -->
+        <Style x:Key="OsCardItem" TargetType="ListBoxItem">
+            <Setter Property="Margin" Value="7"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <!-- Nome acessível do cartão (leitores de tela e automação de interface). -->
+            <Setter Property="AutomationProperties.Name" Value="{Binding Name}"/>
+            <Setter Property="ToolTip" Value="{Binding Tagline}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Grid RenderTransformOrigin="0.5,0.5" MinHeight="{DynamicResource UiCardMin}">
+                            <Grid.RenderTransform>
+                                <TransformGroup>
+                                    <ScaleTransform x:Name="cardScale" ScaleX="1" ScaleY="1"/>
+                                    <TranslateTransform x:Name="cardLift" Y="0"/>
+                                </TransformGroup>
+                            </Grid.RenderTransform>
+
+                            <!-- Relevo do hover: cor NEUTRA (token Elevation), portanto
+                                 idêntico nas 11 marcas. Fica dentro dos limites do
+                                 cartão (nada de blur sangrando para fora). -->
+                            <Border x:Name="halo" CornerRadius="{StaticResource RadiusLg}"
+                                    Background="{DynamicResource Elevation}"
+                                    Margin="4,6,4,-4" Opacity="0" IsHitTestVisible="False"/>
+
+                            <!-- Superfície "vidro": o fundo animado passa por baixo do
+                                 cartão. É o que faz a tela inteira respirar em vez de
+                                 só as frestas. O alfa é alto o bastante para o texto
+                                 ficar acima de 12:1 mesmo com um arco cruzando. -->
+                            <Border x:Name="bg" CornerRadius="{StaticResource RadiusLg}"
+                                    Background="{DynamicResource SurfaceGlass}"
+                                    BorderBrush="{DynamicResource CardBorder}" BorderThickness="1">
+                                <Grid>
+                                    <!-- Aura da marca: enche a direita dos cartões largos
+                                         sem chegar perto do texto (fica na metade direita). -->
+                                    <Rectangle Fill="{Binding AuraBrush}" IsHitTestVisible="False"/>
+
+                                    <Grid Margin="{DynamicResource UiCardPad}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Selo da logo: fundo = marca ESCURECIDA até o
+                                             branco alcançar 4,5:1 (as logos de OsLogos.xaml
+                                             são brancas e não dá para recolorir). A borda
+                                             fina guarda a cor de marca original. -->
+                                        <Border x:Name="chip" CornerRadius="{StaticResource RadiusMd}"
+                                                Background="{Binding InkBrush}"
+                                                BorderBrush="{Binding Brush}" BorderThickness="1.6"
+                                                VerticalAlignment="Center" Margin="0,0,13,0"
+                                                Width="{DynamicResource UiChip}" Height="{DynamicResource UiChip}">
+                                            <Image Source="{Binding Logo}"
+                                                   Width="{DynamicResource UiLogo}" Height="{DynamicResource UiLogo}"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock x:Name="nome" Text="{Binding Name}"
+                                                       FontSize="{DynamicResource UiNome}"
+                                                       FontWeight="SemiBold" Foreground="{DynamicResource TextMain}"
+                                                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                                            <!-- A descrição fica NO CARTÃO: comparar 11 distros
+                                                 não pode custar 11 cliques. O número de linhas
+                                                 (UiTagMax) acompanha a altura da janela. -->
+                                            <TextBlock Text="{Binding Tagline}" Style="{StaticResource BodyText}"
+                                                       Margin="0,4,6,0" TextTrimming="CharacterEllipsis"
+                                                       FontSize="{DynamicResource UiTag}"
+                                                       LineHeight="{DynamicResource UiTagLh}"
+                                                       MaxHeight="{DynamicResource UiTagMax}"/>
+                                            <!-- Sempre o mesmo par, sempre nesta ordem:
+                                                 mecanismo · arquivo de resposta. -->
+                                            <TextBlock Text="{Binding Meta}" Style="{StaticResource CaptionText}"
+                                                       Margin="0,5,0,0" TextWrapping="NoWrap"
+                                                       MaxHeight="{DynamicResource UiMetaMax}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Grid>
+                            </Border>
+
+                            <Border x:Name="selTint" CornerRadius="{StaticResource RadiusLg}"
+                                    Background="{Binding SoftBrush}" Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="hoverRing" CornerRadius="{StaticResource RadiusLg}"
+                                    BorderBrush="{DynamicResource HoverRing}" BorderThickness="1.6"
+                                    Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="selRing" CornerRadius="{StaticResource RadiusLg}"
+                                    BorderBrush="{Binding RingBrush}" BorderThickness="2.4"
+                                    Opacity="0" IsHitTestVisible="False"/>
+                            <Border x:Name="focusRing" CornerRadius="{StaticResource RadiusXl}" Margin="-4"
+                                    BorderBrush="{DynamicResource FocusRing}" BorderThickness="2"
+                                    Opacity="0" IsHitTestVisible="False"/>
+
+                            <Border x:Name="check" Width="24" Height="24" CornerRadius="12"
+                                    Background="{Binding InkBrush}"
+                                    BorderBrush="{DynamicResource CardBg}" BorderThickness="2"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0"
+                                    Opacity="0" IsHitTestVisible="False">
+                                <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                                           Foreground="{DynamicResource OnAccent}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource SurfaceHover}"/>
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="hoverRing" Storyboard.TargetProperty="Opacity" To="0.6" Duration="0:0:0.16"/>
+                                            <DoubleAnimation Storyboard.TargetName="halo" Storyboard.TargetProperty="Opacity" To="0.26" Duration="0:0:0.2"/>
+                                            <DoubleAnimation Storyboard.TargetName="cardScale" Storyboard.TargetProperty="ScaleX" To="1.014" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="cardScale" Storyboard.TargetProperty="ScaleY" To="1.014" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="cardLift" Storyboard.TargetProperty="Y" To="-3" Duration="0:0:0.18">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="hoverRing" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.22"/>
+                                            <DoubleAnimation Storyboard.TargetName="halo" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.28"/>
+                                            <DoubleAnimation Storyboard.TargetName="cardScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.22"/>
+                                            <DoubleAnimation Storyboard.TargetName="cardScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.22"/>
+                                            <DoubleAnimation Storyboard.TargetName="cardLift" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.22"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+
+                            <!-- Seleção com Setters (não animação) de propósito: o cartão
+                                 pré-selecionado precisa aparecer marcado já no primeiro
+                                 quadro, antes de existir qualquer tique de composição. -->
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="selRing" Property="Opacity" Value="1"/>
+                                <Setter TargetName="selTint" Property="Opacity" Value="1"/>
+                                <Setter TargetName="check" Property="Opacity" Value="1"/>
+                                <Setter TargetName="nome" Property="FontWeight" Value="Bold"/>
+                            </Trigger>
+
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="focusRing" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ====================================================================
+             CABEÇALHO DE FAIXA
+             O rótulo e o gerenciador de pacotes ficam sobre PLACAS: assim o
+             contraste do texto não depende do que o fundo animado está fazendo
+             atrás naquele instante.
+             A faixa "SUSE + ARCH" usa as duas metades — cada rótulo cai exatamente
+             em cima do seu cartão, porque a faixa divide a largura em 2 e a grade
+             de cartões também.
+             ==================================================================== -->
+        <DataTemplate x:Key="LaneHeader">
+            <Grid Margin="0,2,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid x:Name="halfA" Grid.Column="0" Margin="7,0,7,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource SurfacePlate}" Padding="11,4">
+                        <TextBlock Text="{Binding Name.Title}" Style="{StaticResource LaneLabel}"/>
+                    </Border>
+                    <Border Grid.Column="1" Height="1" Margin="10,1,10,0" VerticalAlignment="Center"
+                            Background="{DynamicResource InputBorder}"/>
+                    <Border Grid.Column="2" Style="{StaticResource SurfacePlate}" Padding="11,4">
+                        <TextBlock Text="{Binding Name.Sub}" Style="{StaticResource CaptionText}"
+                                   TextWrapping="NoWrap"/>
+                    </Border>
+                </Grid>
+
+                <Grid x:Name="halfB" Grid.Column="1" Margin="7,0,7,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource SurfacePlate}" Padding="11,4">
+                        <TextBlock Text="{Binding Name.Title2}" Style="{StaticResource LaneLabel}"/>
+                    </Border>
+                    <Border Grid.Column="1" Height="1" Margin="10,1,10,0" VerticalAlignment="Center"
+                            Background="{DynamicResource InputBorder}"/>
+                    <Border Grid.Column="2" Style="{StaticResource SurfacePlate}" Padding="11,4">
+                        <TextBlock Text="{Binding Name.Sub2}" Style="{StaticResource CaptionText}"
+                                   TextWrapping="NoWrap"/>
+                    </Border>
+                </Grid>
+            </Grid>
+            <DataTemplate.Triggers>
+                <!-- Faixa de uma família só: o cabeçalho ocupa a largura inteira. -->
+                <DataTrigger Binding="{Binding Name.Title2}" Value="{x:Null}">
+                    <Setter TargetName="halfA" Property="Grid.ColumnSpan" Value="2"/>
+                    <Setter TargetName="halfB" Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Faixa = cabeçalho (Auto) + cartões (todo o resto da altura da faixa). -->
+        <Style x:Key="OsLane" TargetType="GroupItem">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GroupItem">
+                        <Grid Margin="0,0,0,6">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+                            <ContentPresenter ContentTemplate="{StaticResource LaneHeader}"/>
+                            <ItemsPresenter Grid.Row="1"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A lista não rola nem desenha moldura: quem rola é o ScrollViewer de fora. -->
+        <Style x:Key="OsList" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="ItemContainerStyle" Value="{StaticResource OsCardItem}"/>
+            <Setter Property="VirtualizingStackPanel.IsVirtualizing" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <ItemsPresenter/>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <!-- Cuidado: com agrupamento, ItemsPanel vale para os CARTÕES de uma
+                 faixa e GroupStyle.Panel vale para as FAIXAS (é o contrário do
+                 que parece). Rows=1 divide a LARGURA entre os cartões da faixa;
+                 Columns=1 divide a ALTURA entre as faixas. Daí o preenchimento
+                 total da tela sair de graça, em qualquer resolução. -->
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <UniformGrid Rows="1"/>
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid x:Name="Root" SizeChanged="Root_SizeChanged">
+        <!-- ====================================================================
+             DENSIDADE RESPONSIVA
+             Estes valores são recalculados em Root_SizeChanged e chegam aos
+             cartões por {DynamicResource}. São recursos (e não bindings para a
+             janela) de propósito: assim continuam funcionando quando a árvore
+             é renderizada fora de uma Window (harness de render offscreen).
+             ==================================================================== -->
+        <Grid.Resources>
+            <sys:Double x:Key="UiChip">50</sys:Double>
+            <sys:Double x:Key="UiLogo">29</sys:Double>
+            <sys:Double x:Key="UiNome">16.5</sys:Double>
+            <sys:Double x:Key="UiTag">12.5</sys:Double>
+            <sys:Double x:Key="UiTagLh">18</sys:Double>
+            <sys:Double x:Key="UiTagMax">38</sys:Double>
+            <sys:Double x:Key="UiMetaMax">17</sys:Double>
+            <sys:Double x:Key="UiCardMin">78</sys:Double>
+            <Thickness x:Key="UiCardPad">16,12,16,12</Thickness>
+        </Grid.Resources>
+
+        <!-- ================================================================
+             FUNDO ANIMADO — janela inteira, nos dois temas
+             ================================================================ -->
+        <Control x:Name="Backdrop" Style="{StaticResource AmbientSurface}"/>
+
+        <Grid x:Name="Shell">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- ============================== CABEÇALHO ============================== -->
+            <Grid Grid.Row="0">
+                <!-- Vinheta que protege o topo: opaca em cima, some embaixo.
+                     (A máscara é estática; a COR vem do tema.) -->
+                <Rectangle Fill="{DynamicResource SurfaceScrim}" IsHitTestVisible="False">
+                    <Rectangle.OpacityMask>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#FF000000" Offset="0"/>
+                            <GradientStop Color="#FF000000" Offset="0.62"/>
+                            <GradientStop Color="#00000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Rectangle.OpacityMask>
+                </Rectangle>
+
+                <Grid x:Name="HeaderBand" Margin="{StaticResource PagePad}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <!-- BrandMark: e aqui que a marca da abertura pousa. -->
+                            <Image x:Name="BrandMark" Source="icon.ico" Width="24" Height="24" VerticalAlignment="Center"/>
+                            <TextBlock Text="ISOFORGE" FontSize="12.5" FontWeight="Bold" Margin="10,0,0,0"
+                                       Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center"/>
+                            <Border Style="{StaticResource Chip}" Margin="12,0,0,0">
+                                <TextBlock Text="escolha do destino" Style="{StaticResource CaptionText}"
+                                           TextWrapping="NoWrap"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock x:Name="H1" Text="Qual sistema você vai personalizar?"
+                                   Style="{StaticResource TitleScreen}" Margin="0,13,0,0"/>
+                        <TextBlock x:Name="H1Sub" Style="{StaticResource BodyText}" Margin="0,6,24,0"
+                                   Text="Define as abas, o catálogo de programas e o tipo de ISO gerada — e dá para trocar depois, no topo da janela."/>
+                    </StackPanel>
+
+                    <Border x:Name="HeaderNote" Grid.Column="1" Style="{StaticResource SurfacePlate}"
+                            MaxWidth="380" VerticalAlignment="Center" Padding="14,11">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="26" Height="26" CornerRadius="{StaticResource RadiusSm}"
+                                    Background="{DynamicResource ChipBg}" VerticalAlignment="Top">
+                                <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                                           Foreground="{DynamicResource TextSecondary}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Margin="11,0,0,0" Style="{StaticResource CaptionText}"
+                                       TextWrapping="Wrap" TextTrimming="None"
+                                       Text="Abriu a ISO de outro sistema? O IsoForge reconhece a imagem e corrige a escolha sozinho, sem perder o preenchimento."/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ============================== TABULEIRO ============================== -->
+            <Grid Grid.Row="1">
+                <!-- As margens do tabuleiro são o PADDING do ScrollViewer, nunca
+                     margens de um filho: assim MinHeight = ViewportHeight fecha
+                     exato e não sobra barra de rolagem por 3 px. -->
+                <ScrollViewer x:Name="BoardScroll" Padding="27,0,27,8"
+                              VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Focusable="False">
+                    <Grid MinHeight="{Binding ViewportHeight, ElementName=BoardScroll}">
+                        <ListBox x:Name="LstOs" Style="{StaticResource OsList}"
+                                 SelectionChanged="Os_SelectionChanged"
+                                 MouseDoubleClick="Os_DoubleClick"
+                                 PreviewKeyDown="Os_PreviewKeyDown">
+                            <ListBox.GroupStyle>
+                                <GroupStyle HeaderTemplate="{StaticResource LaneHeader}"
+                                            ContainerStyle="{StaticResource OsLane}">
+                                    <GroupStyle.Panel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="1"/>
+                                        </ItemsPanelTemplate>
+                                    </GroupStyle.Panel>
+                                </GroupStyle>
+                            </ListBox.GroupStyle>
+                        </ListBox>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- Esvaece a última fileira quando (e só quando) há rolagem:
+                     cartão cortado ao meio na borda do viewport fica evidente. -->
+                <Rectangle Height="26" VerticalAlignment="Bottom" IsHitTestVisible="False"
+                           Fill="{DynamicResource SurfaceScrim}"
+                           Visibility="{Binding ComputedVerticalScrollBarVisibility, ElementName=BoardScroll}">
+                    <Rectangle.OpacityMask>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00000000" Offset="0"/>
+                            <GradientStop Color="#FF000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Rectangle.OpacityMask>
+                </Rectangle>
+            </Grid>
+
+            <!-- =============================== TRILHO =============================== -->
+            <Grid Grid.Row="2">
+                <Border Style="{StaticResource SurfaceRail}">
+                    <Grid x:Name="RailContent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*" MinWidth="150"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Border x:Name="RailChip" Width="52" Height="52" BorderThickness="1.6"
+                                CornerRadius="{StaticResource RadiusMd}" VerticalAlignment="Center"
+                                Margin="0,0,14,0">
+                            <Image x:Name="RailLogo" Width="30" Height="30"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
+
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock x:Name="TxtSelected" FontSize="18" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextMain}"
+                                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="TxtHint" Style="{StaticResource CaptionText}" Margin="0,3,0,0"
+                                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <!-- Ficha técnica: rótulo em cima, valor embaixo, sempre nesta
+                             ordem. É aqui que o vocabulário do catálogo é ensinado. -->
+                        <Grid x:Name="SpecRow" Grid.Column="2" VerticalAlignment="Center" Margin="0,0,26,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,26,0" MaxWidth="200">
+                                <TextBlock Text="AUTOMAÇÃO" Style="{StaticResource LabelText}"/>
+                                <TextBlock x:Name="SpecAuto" Style="{StaticResource ValueText}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,26,0" MaxWidth="190">
+                                <TextBlock Text="ARQUIVO DE RESPOSTA" Style="{StaticResource LabelText}"/>
+                                <TextBlock x:Name="SpecFile" Style="{StaticResource ValueText}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" MaxWidth="170">
+                                <TextBlock Text="PACOTES" Style="{StaticResource LabelText}"/>
+                                <TextBlock x:Name="SpecPkg" Style="{StaticResource ValueText}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="BtnCancel" IsCancel="True" Content="Cancelar" Style="{StaticResource Secondary}"
+                                    Padding="20,10" Margin="0,0,10,0" Click="Cancel_Click"/>
+                            <Button x:Name="BtnOk" Content="Continuar" Style="{StaticResource Cta}"
+                                    Padding="30,11" IsDefault="True" Click="Ok_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Fio de 3 px na cor da marca, de borda a borda: o sinal mais
+                     direto de "o sistema escolhido é este". Muda de cor com a
+                     seleção (ColorAnimation de 380 ms). -->
+                <Border x:Name="BrandEdge" Height="3" VerticalAlignment="Top" IsHitTestVisible="False"/>
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

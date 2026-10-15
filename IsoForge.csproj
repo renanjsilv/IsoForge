@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>IsoForge</AssemblyName>
+    <RootNamespace>IsoForge</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <Authors>renanjsilv</Authors>
+    <Product>IsoForge - Personalizador de ISO (Windows e Linux)</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Projetos separados que moram dentro desta pasta. Sem estes Remove, o glob padrão do SDK
+      arrastaria o código deles (e o obj/ deles) para dentro do aplicativo do Windows.
+    -->
+    <Compile Remove="SmokeTest\**;SmokeTestLinux\**;linux\**" />
+    <None Remove="SmokeTest\**;SmokeTestLinux\**;linux\**" />
+    <Page Remove="SmokeTest\**;SmokeTestLinux\**;linux\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ícone do app usado também na janela (Window Icon) -->
+    <Resource Include="icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Criptografia DPAPI da config local (settings.dat) -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <!--
+      Consulta WMI no proprio processo, para listar os pendrives sem lancar powershell.exe.
+      A linha "powershell -ExecutionPolicy Bypass -EncodedCommand <base64>" que havia aqui
+      antes e assinatura catalogada de codigo malicioso sem arquivo: em maquina com EDR ela
+      gera alerta e pode ser bloqueada, e o bloqueio se disfarcava de "nenhum pendrive".
+    -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- oscdimg.exe (amd64, do Windows ADK) embutido no exe: extraído em runtime -->
+    <EmbeddedResource Include="Tools\oscdimg.exe">
+      <LogicalName>IsoForge.Tools.oscdimg.exe</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+  </PropertyGroup>
+
+</Project>
